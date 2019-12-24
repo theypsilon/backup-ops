@@ -1,11 +1,10 @@
-use crate::common::{DateMode, Debug, Hashing, Sizes, TraverseMode};
-use std::collections::hash_map::DefaultHasher;
+use crate::common::{Debug, Hashing};
+use crate::internals::compute_hash;
 use std::collections::HashMap;
-use std::fs::{read_dir, DirEntry, File, Metadata};
-use std::hash::{Hash, Hasher};
-use std::io::{BufRead, BufReader, Read, Result, Write};
+use std::fs::File;
+use std::io::{Result, Write};
 use std::path::{Path, PathBuf};
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct DetectDupsConfig {
@@ -16,6 +15,7 @@ pub struct DetectDupsConfig {
     pub size_min: u64,
     pub exclude_path_starts: Vec<String>,
     pub exclude_path_contents: Vec<String>,
+    pub hashing: Hashing,
 }
 
 pub fn detect_dups(config: DetectDupsConfig) -> Result<()> {
@@ -49,35 +49,71 @@ impl Context {
             let record = record?;
             assert_eq!(record.len(), 3);
             let key = format!("{}|{}", &record[1], &record[2]);
+            if self
+                .config
+                .exclude_path_starts
+                .iter()
+                .any(|p| record[0].starts_with(p))
+                || self
+                    .config
+                    .exclude_path_contents
+                    .iter()
+                    .any(|p| record[0].contains(p))
+                || record[2].parse::<u64>().unwrap() < self.config.size_min
+            {
+                continue;
+            }
             if let Some(other_file) = set.get(&key) {
                 if let Some(v) = dups.get_mut(&key) {
-                    v.push(other_file.clone());
+                    v.push(record[0].into());
                 } else {
-                    dups.insert(key, vec![record[0].into(), other_file.clone()]);
+                    dups.insert(key, vec![other_file.clone(), record[0].into()]);
                 }
-            } else if record[2].parse::<u64>().unwrap() >= self.config.size_min {
-                if !self
-                    .config
-                    .exclude_path_starts
-                    .iter()
-                    .any(|p| record[0].starts_with(p))
-                    && !self
-                        .config
-                        .exclude_path_contents
-                        .iter()
-                        .any(|p| record[0].contains(p))
-                {
-                    set.insert(key, record[0].into());
-                }
+            } else {
+                set.insert(key, record[0].into());
             }
         }
-        let mut count = 0;
-        let entries = dups.len();
-        for pair in dups.into_iter() {
-            count += pair.1.len();
-            write!(self.output, "{:?}\n", pair)?;
+        if let Hashing::Yes = self.config.hashing {
+            println!(
+                "Without hashing:\ndups: {:?}.\n\nWith hashing:",
+                count_dups(&dups)
+            );
+
+            let mut new_dups: HashMap<String, Vec<String>> = HashMap::new();
+            let mut set: HashMap<String, String> = HashMap::new();
+            for (_, pack) in dups.into_iter() {
+                for path in pack.into_iter() {
+                    let hash = compute_hash(&Path::new(&path));
+                    let key = hash.to_string();
+                    if let Some(other_file) = set.get(&key) {
+                        if let Some(v) = new_dups.get_mut(&key) {
+                            v.push(path.into());
+                        } else {
+                            new_dups.insert(key, vec![other_file.clone(), path.into()]);
+                        }
+                    } else {
+                        set.insert(key, path.into());
+                    }
+                }
+            }
+            dups = new_dups;
         }
-        println!("dups: {:?} in {} entries.", count, entries);
+
+        println!("dups: {:?}.", count_dups(&dups));
+
+        let mut result: Vec<_> = dups.into_iter().map(|pair| pair.1).collect();
+        result.sort();
+        for v in result.into_iter() {
+            write!(self.output, "{:?}\n", v)?;
+        }
         Ok(())
     }
+}
+
+fn count_dups(map: &HashMap<String, Vec<String>>) -> (usize, usize) {
+    let mut files = 0;
+    for pair in map {
+        files += pair.1.len();
+    }
+    (map.len(), files)
 }

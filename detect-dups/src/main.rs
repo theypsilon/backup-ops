@@ -2,7 +2,7 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use core::common::{DateMode, Debug, Hashing, Sizes, TraverseMode};
+use core::common::{Debug, Hashing};
 use core::detect_dups::{detect_dups, DetectDupsConfig};
 use std::io::Result;
 use std::path::PathBuf;
@@ -31,6 +31,13 @@ struct CliOpts {
     error_log: Option<String>,
 
     #[structopt(
+        short = "c",
+        long = "hashing-check",
+        help = "Adds a check pass where hashes are used to distinguish between different files."
+    )]
+    hashing_check: bool,
+
+    #[structopt(
         long = "exclude-path-starts",
         help = "Excluding paths starting in this way."
     )]
@@ -53,6 +60,11 @@ impl CliOpts {
             size_min: self.size_min.unwrap_or(0),
             exclude_path_starts: self.exclude_path_starts,
             exclude_path_contents: self.exclude_path_contents,
+            hashing: if self.hashing_check {
+                Hashing::Yes
+            } else {
+                Hashing::No
+            },
         }
     }
 }

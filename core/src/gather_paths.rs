@@ -1,3 +1,4 @@
+use crate::common::{DateMode, Debug, Hashing, Sizes, TraverseMode};
 use chrono::{TimeZone, Utc};
 use sha1::{Digest, Sha1};
 use std::ffi::OsString;
@@ -5,10 +6,10 @@ use std::fmt::Write as _;
 use std::fs::{read_dir, DirEntry, File, Metadata};
 use std::io::{Read, Result, Write};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, Instant};
+use std::time::{Instant, SystemTime};
 
 #[derive(Debug)]
-pub struct Options {
+pub struct GatherPathsConfig {
     pub source_path: PathBuf,
     pub target_file: PathBuf,
     pub traverse_mode: TraverseMode,
@@ -19,98 +20,62 @@ pub struct Options {
     pub error_log: Option<PathBuf>,
 }
 
+pub fn gather_paths(config: &GatherPathsConfig) -> Result<()> {
+    let now = Instant::now();
+    let mut ctx = Context::new(config)?;
+    process_path(&mut ctx, &config.source_path)?;
+    ctx.end_writing()?;
+    println!("Duration: {:#?}", (Instant::now() - now));
+    Ok(())
+}
+
 struct Context<'a> {
-    options: &'a Options,
-    buf: String,
-    file: File,
-    new_line: bool,
+    config: &'a GatherPathsConfig,
     error_file: Option<File>,
+    csv_out: csv::Writer<File>,
 }
 
 impl Context<'_> {
-    pub fn new<'a>(options: &'a Options) -> Result<Context<'a>> {
+    pub fn new<'a>(config: &'a GatherPathsConfig) -> Result<Context<'a>> {
         Ok(Context {
-            options,
-            buf: String::with_capacity(200_000_000),
-            file: File::create(&options.target_file)?,
-            new_line: true,
-            error_file: match options.error_log {
+            config,
+            error_file: match config.error_log {
                 Some(ref name) => Some(File::create(&name)?),
                 None => None,
-            }
+            },
+            csv_out: csv::Writer::from_writer(File::create(&config.target_file)?),
         })
     }
     fn write_field(&mut self, data: &str) -> Result<()> {
-        if self.new_line {
-            if self.buf.len() > 100_000_000 {
-                print!(".");
-                self.file.write_all(self.buf.as_bytes())?;
-                self.buf.clear();
-            }
-        } else {
-            self.buf.push(',');
-        }
-        self.buf.push_str(data);
-        self.new_line = false;
+        self.csv_out.write_field(data)?;
         Ok(())
     }
     fn write_eol(&mut self) -> Result<()> {
-        self.buf.push('\n');
-        self.new_line = true;
+        self.csv_out.write_record(None::<&[u8]>)?;
         Ok(())
     }
     fn end_writing(&mut self) -> Result<()> {
-        self.file.write_all(self.buf.as_bytes())
+        Ok(())
     }
-    fn report_error<T: std::error::Error + std::fmt::Display>(&mut self, entry: &DirEntry, error: T) -> Result<()> {
+    fn report_error<T: std::error::Error + std::fmt::Display>(
+        &mut self,
+        entry: &DirEntry,
+        error: T,
+    ) -> Result<()> {
         if let Some(error_file) = &mut self.error_file {
-            error_file.write_all(&format!("entry: {:?}, error: {:?}\n", entry, error).as_bytes())?;
+            error_file
+                .write_all(&format!("entry: {:?}, error: {:?}\n", entry, error).as_bytes())?;
         }
-        let debugging = if let Debug::On = self.options.debug { true } else { false };
+        let debugging = if let Debug::On = self.config.debug {
+            true
+        } else {
+            false
+        };
         if debugging || self.error_file.is_none() {
             println!("entry: {:?}, error: {:?}", entry, error);
         }
         Ok(())
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum TraverseMode {
-    Recursive,
-    NonRecursive,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Debug {
-    On,
-    Off,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum DateMode {
-    Yes,
-    No,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Sizes {
-    Yes,
-    No,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Hashing {
-    Yes,
-    No,
-}
-
-pub fn process(options: &Options) -> Result<()> {
-    let now = Instant::now();
-    let mut ctx = Context::new(options)?;
-    process_path(&mut ctx, &options.source_path)?;
-    ctx.end_writing()?;
-    println!("Duration: {:#?}", (Instant::now() - now));
-    Ok(())
 }
 
 fn process_path(ctx: &mut Context, path: &Path) -> Result<()> {
@@ -148,30 +113,30 @@ fn process_file_3(
     file_name: OsString,
     metadata: Metadata,
 ) -> Result<()> {
-    if let Debug::On = ctx.options.debug {
+    if let Debug::On = ctx.config.debug {
         print!("path: {:?}, file_name: {:?}", path, file_name);
     }
     ctx.write_field(path.to_str().unwrap())?;
     ctx.write_field(file_name.to_str().unwrap())?;
-    if let Sizes::Yes = ctx.options.sizes {
+    if let Sizes::Yes = ctx.config.sizes {
         let size = format_size(metadata.len());
-        if let Debug::On = ctx.options.debug {
+        if let Debug::On = ctx.config.debug {
             print!(", size: {}", size);
         }
         ctx.write_field(&size)?;
     }
-    if let Hashing::Yes = ctx.options.hashing {
+    if let Hashing::Yes = ctx.config.hashing {
         let hash = compute_hash(path);
-        if let Debug::On = ctx.options.debug {
+        if let Debug::On = ctx.config.debug {
             print!(", hash: {}", hash);
         }
         ctx.write_field(&hash)?;
     }
-    if let DateMode::Yes = ctx.options.date_mode {
+    if let DateMode::Yes = ctx.config.date_mode {
         let created = format_date(metadata.created());
         let modified = format_date(metadata.modified());
         let accessed = format_date(metadata.accessed());
-        if let Debug::On = ctx.options.debug {
+        if let Debug::On = ctx.config.debug {
             print!(
                 ", created: {}, modified: {}, accessed: {}",
                 created, modified, accessed
@@ -182,7 +147,7 @@ fn process_file_3(
         ctx.write_field(&accessed)?;
     }
     ctx.write_eol()?;
-    if let Debug::On = ctx.options.debug {
+    if let Debug::On = ctx.config.debug {
         println!();
     }
     Ok(())
@@ -243,7 +208,7 @@ fn process_dir_1(ctx: &mut Context, entry: &DirEntry) -> Result<()> {
 }
 
 fn process_dir_2(ctx: &mut Context, entry: &DirEntry) -> Result<()> {
-    if let TraverseMode::Recursive = ctx.options.traverse_mode {
+    if let TraverseMode::Recursive = ctx.config.traverse_mode {
         process_path(ctx, &entry.path())?;
     }
     Ok(())

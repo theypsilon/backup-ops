@@ -2,14 +2,15 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use core::process::{process, DateMode, Debug, Hashing, Options, Sizes, TraverseMode};
+use core::common::{DateMode, Debug, Hashing, Sizes, TraverseMode};
+use core::gather_paths::{gather_paths, GatherPathsConfig};
 use std::io::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "backup-ops", about = "Tools for personal backup processing.")]
-struct Opt {
+#[structopt(name = "gather-paths", about = "Gather paths from a given path.")]
+struct CliOpts {
     #[structopt(help = "Input path")]
     source_path: String,
 
@@ -29,7 +30,7 @@ struct Opt {
     #[structopt(short = "t", long = "time", help = "Saves systime metadata.")]
     dates: bool,
 
-    #[structopt(short = "l", long = "length", help = "Saves file sizes.")]
+    #[structopt(short = "l", long = "lengths", help = "Saves file sizes.")]
     lengths: bool,
 
     #[structopt(short = "s", long = "sha1", help = "Saves file computed hash codes.")]
@@ -39,9 +40,9 @@ struct Opt {
     error_log: Option<String>,
 }
 
-impl Opt {
-    fn to_options(&self) -> Options {
-        Options {
+impl CliOpts {
+    fn to_config(&self) -> GatherPathsConfig {
+        GatherPathsConfig {
             source_path: PathBuf::from(&self.source_path),
             target_file: PathBuf::from(&self.target_file),
             traverse_mode: if self.recursive {
@@ -63,9 +64,7 @@ impl Opt {
 }
 
 fn main() -> Result<()> {
-    let options = Opt::from_args().to_options();
-    if let Debug::On = options.debug {
-        println!("{:?}", options);
-    }
-    process(&options)
+    let config = CliOpts::from_args().to_config();
+    println!("config: {:?}", config);
+    gather_paths(&config)
 }

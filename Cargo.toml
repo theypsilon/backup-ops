@@ -2,5 +2,7 @@
 members = [
     "core",
     "gather-paths",
+    "filter-paths",
+    "hash-paths",
     "detect-dups"
 ]

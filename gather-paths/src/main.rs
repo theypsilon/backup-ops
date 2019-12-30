@@ -11,10 +11,10 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "gather-paths", about = "Gather paths from a given path.")]
 struct CliOpts {
-    #[structopt(help = "Input path")]
-    source_path: String,
+    #[structopt(short = "i", long = "input", help = "Input paths", required = true)]
+    source_paths: Vec<String>,
 
-    #[structopt(help = "Output file")]
+    #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
     #[structopt(
@@ -43,7 +43,7 @@ struct CliOpts {
 impl CliOpts {
     fn to_config(&self) -> GatherPathsConfig {
         GatherPathsConfig {
-            source_path: PathBuf::from(&self.source_path),
+            source_paths: self.source_paths.iter().map(PathBuf::from).collect(),
             target_file: PathBuf::from(&self.target_file),
             traverse_mode: if self.recursive {
                 TraverseMode::Recursive

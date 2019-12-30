@@ -10,6 +10,12 @@ pub enum Debug {
     Off,
 }
 
+impl Default for Debug {
+    fn default() -> Self {
+        Self::Off
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum DateMode {
     Yes,

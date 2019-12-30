@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -xeuo pipefail
 
 cargo run --release -p gather-paths -- \
-    /mnt/c/ c.csv \
-    --error-log errors.log \
-    --recursive \
-    --lengths
+    -i /mnt/c/Users/Jose/Documents/Old_CDs\ 1/ /mnt/c/Users/Jose/Documents/Old_CDs\ 2/ \
+    -o old_cds.csv \
+    -e errors_gather.log \
+    -rl
+
+wc -l old_cds.csv
+wc -l errors_gather.log || true

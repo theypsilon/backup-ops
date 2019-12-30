@@ -143,6 +143,15 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "filter-paths"
+version = "0.1.0"
+dependencies = [
+ "core 0.1.0",
+ "structopt 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt-derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "gather-paths"
 version = "0.1.0"
 dependencies = [
@@ -157,6 +166,15 @@ version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "hash-paths"
+version = "0.1.0"
+dependencies = [
+ "core 0.1.0",
+ "structopt 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt-derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

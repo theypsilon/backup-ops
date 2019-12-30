@@ -2,19 +2,19 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use core::common::{Debug};
-use core::detect_dups::{detect_dups, DetectDupsConfig};
+use core::common::Debug;
+use core::hash_paths::{hash_paths, HashPathsConfig};
 use std::io::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "detect-dups", about = "Detects dups from a set of paths.")]
+#[structopt(name = "hash-paths", about = "Adds hash to a list of paths.")]
 struct CliOpts {
-    #[structopt(short="i", long="input", help = "Input file")]
+    #[structopt(short = "i", long = "input", help = "Input file")]
     source_file: String,
 
-    #[structopt(short="o", long="output", help = "Output file")]
+    #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
@@ -25,8 +25,8 @@ struct CliOpts {
 }
 
 impl CliOpts {
-    fn into_config(self) -> DetectDupsConfig {
-        DetectDupsConfig {
+    fn into_config(self) -> HashPathsConfig {
+        HashPathsConfig {
             source_file: PathBuf::from(&self.source_file),
             target_file: PathBuf::from(&self.target_file),
             debug: if self.debug { Debug::On } else { Debug::Off },
@@ -38,5 +38,5 @@ impl CliOpts {
 fn main() -> Result<()> {
     let config = CliOpts::from_args().into_config();
     println!("config: {:?}", config);
-    detect_dups(config)
+    hash_paths(config)
 }

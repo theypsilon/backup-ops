@@ -1,7 +1,6 @@
 use crate::common::{DateMode, Debug, Hashing, Sizes, TraverseMode};
 use crate::internals::compute_hash;
 use chrono::{TimeZone, Utc};
-use std::ffi::OsString;
 use std::fs::{read_dir, DirEntry, File, Metadata};
 use std::io::{Result, Write};
 use std::path::{Path, PathBuf};
@@ -9,7 +8,7 @@ use std::time::{Instant, SystemTime};
 
 #[derive(Debug)]
 pub struct GatherPathsConfig {
-    pub source_path: PathBuf,
+    pub source_paths: Vec<PathBuf>,
     pub target_file: PathBuf,
     pub traverse_mode: TraverseMode,
     pub debug: Debug,
@@ -22,7 +21,9 @@ pub struct GatherPathsConfig {
 pub fn gather_paths(config: &GatherPathsConfig) -> Result<()> {
     let now = Instant::now();
     let mut ctx = Context::new(config)?;
-    process_path(&mut ctx, &config.source_path)?;
+    for path in config.source_paths.iter() {
+        process_path(&mut ctx, path)?;
+    }
     ctx.end_writing()?;
     println!("Duration: {:#?}", (Instant::now() - now));
     Ok(())
@@ -103,20 +104,14 @@ fn process_file_1(ctx: &mut Context, entry: &DirEntry) -> Result<()> {
 }
 
 fn process_file_2(ctx: &mut Context, entry: &DirEntry) -> Result<()> {
-    process_file_3(ctx, &entry.path(), entry.file_name(), entry.metadata()?)
+    process_file_3(ctx, &entry.path(), entry.metadata()?)
 }
 
-fn process_file_3(
-    ctx: &mut Context,
-    path: &Path,
-    file_name: OsString,
-    metadata: Metadata,
-) -> Result<()> {
+fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<()> {
     if let Debug::On = ctx.config.debug {
-        print!("path: {:?}, file_name: {:?}", path, file_name);
+        print!("path: {:?}", path);
     }
     ctx.write_field(path.to_str().unwrap())?;
-    ctx.write_field(file_name.to_str().unwrap())?;
     if let Sizes::Yes = ctx.config.sizes {
         let size = format_size(metadata.len());
         if let Debug::On = ctx.config.debug {

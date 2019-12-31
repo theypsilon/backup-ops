@@ -17,6 +17,9 @@ struct CliOpts {
     #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
+    #[structopt(short = "b", long = "bytes", help = "Determine how many bytes are readed to calculate the hash. Zero means all bytes. Default value is 0.")]
+    bytes: Option<u64>,
+
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 
@@ -29,6 +32,11 @@ impl CliOpts {
         HashPathsConfig {
             source_file: PathBuf::from(&self.source_file),
             target_file: PathBuf::from(&self.target_file),
+            bytes: if let Some(bytes) = self.bytes {
+                bytes
+            } else {
+                0
+            },
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

@@ -2,6 +2,7 @@ use crate::common::Debug;
 use std::fs::File;
 use std::io::Result;
 use std::path::PathBuf;
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 #[derive(Debug)]
@@ -54,6 +55,8 @@ pub struct FilterPathsConfig {
     pub error_log: Option<PathBuf>,
     pub size_min: u64,
     pub size_max: u64,
+    pub unique_sizes: bool,
+    pub unique_hashes: bool,
     pub blacklist_path_starts: Vec<FilterPath>,
     pub blacklist_path_ends: Vec<FilterPath>,
     pub blacklist_path_contents: Vec<FilterPath>,
@@ -68,6 +71,8 @@ impl Default for FilterPathsConfig {
             target_file: Default::default(),
             debug: Default::default(),
             error_log: Default::default(),
+            unique_sizes: false,
+            unique_hashes: false,
             size_min: std::u64::MIN,
             size_max: std::u64::MAX,
             blacklist_path_starts: Default::default(),
@@ -81,41 +86,88 @@ impl Default for FilterPathsConfig {
 
 pub fn filter_paths(config: FilterPathsConfig) -> Result<()> {
     let now = Instant::now();
-    let mut ctx = Context::new(config)?;
+    let mut ctx = Context::new(&config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
+    println!("Written {} lines {:?}", ctx.lines_written, config.target_file);
+    println!("Errors: {} ({:?})", 0, config.error_log);
     Ok(())
 }
 
-struct Context {
-    config: FilterPathsConfig,
+struct Context<'a> {
+    config: &'a FilterPathsConfig,
     input: File,
     output: File,
+    lines_written: u64,
 }
 
-impl Context {
-    pub fn new(config: FilterPathsConfig) -> Result<Self> {
+struct MapValue {
+    path: Option<String>,
+}
+
+impl MapValue {
+    pub fn new(path: String) -> Self {
+        MapValue {
+            path: Some(path),
+        }
+    }
+}
+
+impl<'a> Context<'a> {
+    pub fn new(config: &'a FilterPathsConfig) -> Result<Self> {
         Ok(Context {
             input: File::open(&config.source_file)?,
             output: File::create(&config.target_file)?,
             config,
+            lines_written: 0,
         })
     }
 
     pub fn process(&mut self) -> Result<()> {
         let mut reader = csv::Reader::from_reader(&self.input);
         let mut writer = csv::Writer::from_writer(&self.output);
+
+        let mut sizes: HashMap<u64, MapValue> = HashMap::with_capacity(100_000);
+        let mut hashes: HashMap<String, MapValue> = HashMap::with_capacity(100_000);
+
+        let mut dups: HashSet<String> = HashSet::with_capacity(100_000);
+        let mut records: Vec<csv::StringRecord> = Vec::with_capacity(100_000);
         for record in reader.records() {
             let record = record?;
-            assert_eq!(record.len(), 2);
             let path = &record[0];
             let size = record[1].parse::<u64>().unwrap();
             if is_filtered(&self.config, path, size) {
                 continue;
             }
-            writer.write_field(&record[0])?;
-            writer.write_field(&record[1])?;
-            writer.write_record(None::<&[u8]>)?;
+            records.push(record.clone());
+            if self.config.unique_sizes {
+                if let Some(other) = sizes.get_mut(&size) {
+                    dups.insert(path.into());
+                    if let Some(other_path) = other.path.take() {
+                        dups.insert(other_path);
+                    }
+                } else {
+                    sizes.insert(size, MapValue::new(path.into()));
+                }
+            }
+            if self.config.unique_hashes {
+                let hash: String = (&record[2]).into();
+                if let Some(other) = hashes.get_mut(&hash) {
+                    dups.insert(path.into());
+                    if let Some(other_path) = other.path.take() {
+                        dups.insert(other_path);
+                    }
+                } else {
+                    hashes.insert(hash, MapValue::new(path.into()));
+                }
+            }
+        }
+        for record in records {
+            if (self.config.unique_hashes || self.config.unique_sizes) && !dups.contains(&record[0]) {
+                continue;
+            }
+            writer.write_record(&record)?;
+            self.lines_written += 1;
         }
         Ok(())
     }
@@ -156,6 +208,7 @@ fn is_filtered(config: &FilterPathsConfig, path: &str, size: u64) -> bool {
     {
         return true;
     }
+
     if size < config.size_min || size > config.size_max {
         return true;
     }

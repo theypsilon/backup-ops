@@ -20,17 +20,23 @@ struct CliOpts {
     #[structopt(long = "size-min", help = "Minimum size to consider (Default 0).")]
     size_min: Option<u64>,
 
+    #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
+    debug: bool,
+
+    #[structopt(short = "e", long = "error-log", help = "Error log file.")]
+    error_log: Option<String>,
+
     #[structopt(
         long = "size-max",
         help = "Maximum size to consider (Default u64 MAX)."
     )]
     size_max: Option<u64>,
 
-    #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
-    debug: bool,
+    #[structopt(long = "exclude-unique-sizes", help = "Exclude files that don't have the same size as other files in the set.")]
+    unique_sizes: bool,
 
-    #[structopt(short = "e", long = "error-log", help = "Error log file.")]
-    error_log: Option<String>,
+    #[structopt(long = "exclude-unique-hashes", help = "Exclude files that don't have the same hash as other files in the set.")]
+    unique_hashes: bool,
 
     #[structopt(
         long = "blacklist-path-starts",
@@ -72,6 +78,8 @@ impl CliOpts {
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
             size_min: self.size_min.unwrap_or(0),
             size_max: self.size_max.unwrap_or(std::u64::MAX),
+            unique_sizes: self.unique_sizes,
+            unique_hashes: self.unique_hashes,
             blacklist_path_starts: self
                 .blacklist_path_starts
                 .iter()

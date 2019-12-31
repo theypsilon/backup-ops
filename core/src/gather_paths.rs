@@ -1,10 +1,8 @@
-use crate::common::{DateMode, Debug, Hashing, Sizes, TraverseMode};
-use crate::internals::compute_hash;
-use chrono::{TimeZone, Utc};
+use crate::common::{Debug, TraverseMode};
 use std::fs::{read_dir, DirEntry, File, Metadata};
 use std::io::{Result, Write};
 use std::path::{Path, PathBuf};
-use std::time::{Instant, SystemTime};
+use std::time::{Instant};
 
 #[derive(Debug)]
 pub struct GatherPathsConfig {
@@ -12,9 +10,6 @@ pub struct GatherPathsConfig {
     pub target_file: PathBuf,
     pub traverse_mode: TraverseMode,
     pub debug: Debug,
-    pub date_mode: DateMode,
-    pub sizes: Sizes,
-    pub hashing: Hashing,
     pub error_log: Option<PathBuf>,
 }
 
@@ -26,12 +21,16 @@ pub fn gather_paths(config: &GatherPathsConfig) -> Result<()> {
     }
     ctx.end_writing()?;
     println!("Duration: {:#?}", (Instant::now() - now));
+    println!("Written {} lines {:?}", ctx.lines_written, config.target_file);
+    println!("Errors: {} ({:?})", ctx.errors_reported, config.error_log);
     Ok(())
 }
 
 struct Context<'a> {
     config: &'a GatherPathsConfig,
     error_file: Option<File>,
+    errors_reported: u64,
+    lines_written: u64,
     csv_out: csv::Writer<File>,
 }
 
@@ -43,6 +42,8 @@ impl Context<'_> {
                 Some(ref name) => Some(File::create(&name)?),
                 None => None,
             },
+            errors_reported: 0,
+            lines_written: 0,
             csv_out: csv::Writer::from_writer(File::create(&config.target_file)?),
         })
     }
@@ -52,6 +53,7 @@ impl Context<'_> {
     }
     fn write_eol(&mut self) -> Result<()> {
         self.csv_out.write_record(None::<&[u8]>)?;
+        self.lines_written += 1;
         Ok(())
     }
     fn end_writing(&mut self) -> Result<()> {
@@ -62,6 +64,7 @@ impl Context<'_> {
         entry: &DirEntry,
         error: T,
     ) -> Result<()> {
+        self.errors_reported += 1;
         if let Some(error_file) = &mut self.error_file {
             error_file
                 .write_all(&format!("entry: {:?}, error: {:?}\n", entry, error).as_bytes())?;
@@ -112,34 +115,12 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
         print!("path: {:?}", path);
     }
     ctx.write_field(path.to_str().unwrap())?;
-    if let Sizes::Yes = ctx.config.sizes {
-        let size = format_size(metadata.len());
-        if let Debug::On = ctx.config.debug {
-            print!(", size: {}", size);
-        }
-        ctx.write_field(&size)?;
+    let size = format_size(metadata.len());
+    if let Debug::On = ctx.config.debug {
+        print!(", size: {}", size);
     }
-    if let Hashing::Yes = ctx.config.hashing {
-        let hash = compute_hash(path);
-        if let Debug::On = ctx.config.debug {
-            print!(", hash: {}", hash);
-        }
-        ctx.write_field(&hash)?;
-    }
-    if let DateMode::Yes = ctx.config.date_mode {
-        let created = format_date(metadata.created());
-        let modified = format_date(metadata.modified());
-        let accessed = format_date(metadata.accessed());
-        if let Debug::On = ctx.config.debug {
-            print!(
-                ", created: {}, modified: {}, accessed: {}",
-                created, modified, accessed
-            );
-        }
-        ctx.write_field(&created)?;
-        ctx.write_field(&modified)?;
-        ctx.write_field(&accessed)?;
-    }
+    ctx.write_field(&size)?;
+    ctx.write_field("NULL")?;
     ctx.write_eol()?;
     if let Debug::On = ctx.config.debug {
         println!();
@@ -149,21 +130,6 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
 
 fn format_size(len: u64) -> String {
     format!("{}", len)
-}
-
-fn format_date(date: Result<SystemTime>) -> String {
-    match date {
-        Ok(time) => {
-            let epoch = match time.duration_since(SystemTime::UNIX_EPOCH) {
-                Ok(time) => time.as_secs() as i64,
-                Err(_) => return "EPOCH_ERROR".into(),
-            };
-            Utc.timestamp(epoch, 0)
-                .format("%Y-%m-%d (%H:%M:%S)")
-                .to_string()
-        }
-        Err(_) => "NO_SYSTIME".into(),
-    }
 }
 
 fn process_dir_1(ctx: &mut Context, entry: &DirEntry) -> Result<()> {

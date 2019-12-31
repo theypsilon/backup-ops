@@ -15,15 +15,20 @@ pub struct DetectDupsConfig {
 
 pub fn detect_dups(config: DetectDupsConfig) -> Result<()> {
     let now = Instant::now();
-    let mut ctx = Context::new(config)?;
+    let mut ctx = Context::new(&config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
+    println!("Written {} lines {:?}", ctx.lines_written, config.target_file);
+    println!("Paths included: {}", ctx.paths_included);
+    println!("Errors: {} ({:?})", 0, config.error_log);
     Ok(())
 }
 
 struct Context {
     input: File,
     output: File,
+    lines_written: u64,
+    paths_included: u64,
 }
 
 #[derive(Debug)]
@@ -33,10 +38,12 @@ struct DupEntry {
 }
 
 impl Context {
-    pub fn new(config: DetectDupsConfig) -> Result<Self> {
+    pub fn new<'a>(config: &'a DetectDupsConfig) -> Result<Self> {
         Ok(Context {
             input: File::open(&config.source_file)?,
             output: File::create(&config.target_file)?,
+            lines_written: 0,
+            paths_included: 0
         })
     }
 
@@ -61,7 +68,8 @@ impl Context {
                 set.insert(key, (record[0].into(), record[1].into()));
             }
         }
-        let result: Vec<_> = dups.into_iter().map(|pair| pair.1).collect();
+        let mut result: Vec<_> = dups.into_iter().map(|pair| pair.1).collect();
+        result.sort_by(|a, b| std::cmp::Ord::cmp(&a.dups[0], &b.dups[0]));
         write!(self.output, "[\n")?;
         let mut first_line = true;
         for v in result.into_iter() {
@@ -78,9 +86,11 @@ impl Context {
                 } else {
                     write!(self.output, ", ")?;
                 }
-                write!(self.output, "\"{}\"", p)?;    
+                write!(self.output, "\"{}\"", p)?;
+                self.paths_included += 1;
             }
             write!(self.output, "]")?;
+            self.lines_written += 1;
         }
         write!(self.output, "\n]\n")?;
         Ok(())

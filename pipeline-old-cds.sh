@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-echo "START"
 cargo build --all --release
 echo
 ./target/release/gather-paths \

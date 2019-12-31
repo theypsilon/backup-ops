@@ -13,9 +13,10 @@ pub struct GatherPathsConfig {
     pub error_log: Option<PathBuf>,
 }
 
-pub fn gather_paths(config: &GatherPathsConfig) -> Result<()> {
+pub fn gather_paths(config: GatherPathsConfig) -> Result<()> {
+    println!("config: {:?}", config);
     let now = Instant::now();
-    let mut ctx = Context::new(config)?;
+    let mut ctx = Context::new(&config)?;
     for path in config.source_paths.iter() {
         process_path(&mut ctx, path)?;
     }

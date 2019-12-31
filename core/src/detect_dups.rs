@@ -14,6 +14,7 @@ pub struct DetectDupsConfig {
 }
 
 pub fn detect_dups(config: DetectDupsConfig) -> Result<()> {
+    println!("config: {:?}", config);
     let now = Instant::now();
     let mut ctx = Context::new(&config)?;
     ctx.process()?;

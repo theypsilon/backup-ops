@@ -36,7 +36,5 @@ impl CliOpts {
 }
 
 fn main() -> Result<()> {
-    let config = CliOpts::from_args().into_config();
-    println!("config: {:?}", config);
-    detect_dups(config)
+    detect_dups(CliOpts::from_args().into_config())
 }

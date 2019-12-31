@@ -40,31 +40,31 @@ struct CliOpts {
 
     #[structopt(
         long = "blacklist-path-starts",
-        help = "Excluding paths starting in this way."
+        help = "Excluding paths starting in this way. Prepend ':case-insensitive:!' if you don't wanna have a case sensitive match."
     )]
     blacklist_path_starts: Vec<String>,
 
     #[structopt(
         long = "blacklist-path-ends",
-        help = "Excluding paths ending in this way."
+        help = "Excluding paths ending in this way. Prepend ':case-insensitive:!' if you don't wanna have a case sensitive match."
     )]
     blacklist_path_ends: Vec<String>,
 
     #[structopt(
         long = "blacklist-path-containing",
-        help = "Excluding paths containing these substrings."
+        help = "Excluding paths containing these substrings. Prepend ':case-insensitive:!' if you don't wanna have a case sensitive match."
     )]
     blacklist_path_contents: Vec<String>,
 
     #[structopt(
         long = "whitelist-path-ends",
-        help = "Include only paths ending in this way."
+        help = "Include only paths ending in this way. Prepend ':case-insensitive:!' if you don't wanna have a case sensitive match."
     )]
     whitelist_path_ends: Vec<String>,
 
     #[structopt(
         long = "whitelist-path-containing",
-        help = "Include only paths containing these substrings."
+        help = "Include only paths containing these substrings. Prepend ':case-insensitive:!' if you don't wanna have a case sensitive match."
     )]
     whitelist_path_contents: Vec<String>,
 }
@@ -110,7 +110,5 @@ impl CliOpts {
 }
 
 fn main() -> Result<()> {
-    let config = CliOpts::from_args().into_config();
-    println!("config: {:?}", config);
-    filter_paths(config)
+    filter_paths(CliOpts::from_args().into_config())
 }

@@ -48,7 +48,5 @@ impl CliOpts {
 }
 
 fn main() -> Result<()> {
-    let config = CliOpts::from_args().to_config();
-    println!("config: {:?}", config);
-    gather_paths(&config)
+    gather_paths(CliOpts::from_args().to_config())
 }

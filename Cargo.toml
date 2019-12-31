@@ -4,5 +4,6 @@ members = [
     "gather-paths",
     "filter-paths",
     "hash-paths",
-    "detect-dups"
+    "detect-dups",
+    "unique-paths"
 ]

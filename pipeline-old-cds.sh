@@ -32,4 +32,8 @@ echo
 ./target/release/detect-dups \
     --input hashed_cds_2.csv --output dups.json \
     --error-log errors_dups.log
+echo
+./target/release/unique-paths \
+    --input-dups dups.json --input-paths old_cds.csv --output unique_cds.csv \
+    --error-log error_unique.log
 echo "DONE!"

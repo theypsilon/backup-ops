@@ -85,7 +85,7 @@ impl Default for FilterPathsConfig {
 }
 
 pub fn filter_paths(config: FilterPathsConfig) -> Result<()> {
-    println!("config: {:?}", config);
+    println!("FILTER PATHS | config: {:?}", config);
     let now = Instant::now();
     let mut ctx = Context::new(&config)?;
     ctx.process()?;

@@ -14,7 +14,7 @@ pub struct GatherPathsConfig {
 }
 
 pub fn gather_paths(config: GatherPathsConfig) -> Result<()> {
-    println!("config: {:?}", config);
+    println!("GATHER PATHS | config: {:?}", config);
     let now = Instant::now();
     let mut ctx = Context::new(&config)?;
     for path in config.source_paths.iter() {

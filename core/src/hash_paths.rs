@@ -15,7 +15,7 @@ pub struct HashPathsConfig {
 }
 
 pub fn hash_paths(config: HashPathsConfig) -> Result<()> {
-    println!("config: {:?}", config);
+    println!("HASH PATHS | config: {:?}", config);
     let now = Instant::now();
     let mut ctx = Context::new(&config)?;
     ctx.process()?;

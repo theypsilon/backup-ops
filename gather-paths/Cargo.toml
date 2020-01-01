@@ -10,3 +10,4 @@ edition = "2018"
 core = { path = "../core" }
 structopt = "0.1"
 structopt-derive = "0.1"
+anyhow = "1.0.26"

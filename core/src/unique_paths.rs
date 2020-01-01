@@ -1,11 +1,12 @@
 use crate::common::{Debug};
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{Result, BufReader, BufWriter};
+use std::io::{BufReader, BufWriter};
 use std::path::{PathBuf};
 use std::time::Instant;
 use size_format::{SizeFormatterSI};
 use num_format::{Locale, ToFormattedString};
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct UniquePathsConfig {
@@ -76,7 +77,7 @@ impl Context {
             } else {
                 output.write_record(&record)?;
             }
-            let size = record[1].parse::<u64>().unwrap();
+            let size = record[1].parse::<u64>()?;
 
             self.total_size += size;
             self.lines_written += 1;

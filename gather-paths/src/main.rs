@@ -4,7 +4,7 @@ extern crate structopt_derive;
 
 use core::common::{Debug, TraverseMode};
 use core::gather_paths::{gather_paths, GatherPathsConfig};
-use std::io::Result;
+use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

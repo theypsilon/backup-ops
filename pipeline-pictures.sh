@@ -3,7 +3,7 @@
 set -euo pipefail
 
 INPUT="${1:-/mnt/c/}"
-OUT="out/${2:-pics}"
+OUT="$(pwd)/out/${2:-pics}"
 
 mkdir -p ${OUT}
 
@@ -47,6 +47,9 @@ echo
 echo
 ./target/release/unique-paths \
     --input-dups ${OUT}/dups.json --input-paths ${OUT}/all_pics_1.csv --output ${OUT}/unique.csv \
-    --error-log ${OUT}/error_unique.log \
-    --only-paths
+    --error-log ${OUT}/error_unique.log
+echo
+./target/release/copy-files \
+    --input ${OUT}/unique.csv --output ${OUT}/pics/ \
+    --error-log ${OUT}/error_copy_files.log
 echo "DONE!"

@@ -4,7 +4,7 @@ extern crate structopt_derive;
 
 use core::common::{Debug};
 use core::detect_dups::{detect_dups, DetectDupsConfig};
-use std::io::Result;
+use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

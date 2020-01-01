@@ -1,11 +1,12 @@
 use crate::common::Debug;
 use std::fs::File;
-use std::io::{Result, BufReader, BufWriter};
+use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 use size_format::{SizeFormatterSI};
 use num_format::{Locale, ToFormattedString};
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct FilterPathsConfig {
@@ -63,7 +64,7 @@ impl Context {
         for record in reader.records() {
             let record = record?;
             let path = &record[0];
-            let size = record[1].parse::<u64>().unwrap();
+            let size = record[1].parse::<u64>()?;
             if is_filtered(&self.config, path, size) {
                 continue;
             }
@@ -94,7 +95,7 @@ impl Context {
             if (self.config.unique_hashes || self.config.unique_sizes) && !dups.contains(&record[0]) {
                 continue;
             }
-            let size = record[1].parse::<u64>().unwrap();
+            let size = record[1].parse::<u64>()?;
             self.total_size += size;
 
             writer.write_record(&record)?;

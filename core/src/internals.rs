@@ -1,8 +1,9 @@
 use sha1::{Digest, Sha1};
 use std::fmt::Write as _;
 use std::fs::File;
-use std::io::{Read, Write, BufReader, Result};
+use std::io::{Read, Write, BufReader};
 use std::path::{Path, PathBuf};
+use anyhow::Result;
 use crate::common::Debug;
 
 pub fn compute_hash(path: &Path, size: usize) -> Result<String> {
@@ -27,7 +28,7 @@ pub fn compute_hash(path: &Path, size: usize) -> Result<String> {
     let result = sh.result();
     let mut hash = String::with_capacity(result.len());
     for byte in result {
-        write!(&mut hash, "{:02x}", byte).unwrap();
+        write!(&mut hash, "{:02x}", byte)?;
     }
     Ok(hash)
 }
@@ -48,10 +49,10 @@ impl Reporter {
             debug,
         }
     }
-    pub fn report_error<T: std::error::Error + std::fmt::Display>(
+    pub fn report_error(
         &mut self,
         entry: &impl std::fmt::Debug,
-        error: T,
+        error: impl std::fmt::Debug,
     ) -> Result<()> {
         self.errors_reported += 1;
         if let Some(errors_path) = &mut self.errors_path {

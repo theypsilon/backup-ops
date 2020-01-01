@@ -1,7 +1,7 @@
 use crate::common::Debug;
 use crate::internals::Reporter;
 use std::fs::File;
-use std::io::{Result};
+use anyhow::Result;
 use std::path::{PathBuf, Path};
 use std::time::Instant;
 use crate::internals::compute_hash;
@@ -48,7 +48,7 @@ impl Context {
         let mut total_size = 0;
         for record in reader.records() {
             let record = record?;
-            let size = record[1].parse::<u64>().unwrap();
+            let size = record[1].parse::<u64>()?;
             total_size += size;
         }
         reader.seek(start_pos)?;
@@ -57,10 +57,10 @@ impl Context {
         for record in reader.records() {
             let record = record?;
             let path = &record[0];
-            let size = record[1].parse::<u64>().unwrap();
+            let size = record[1].parse::<u64>()?;
 
             current_size += size;
-            print!("\r{:.2}%", (current_size as f64 / total_size as f64) * 100.0);
+            print!("\r{:.2}%        ", (current_size as f64 / total_size as f64) * 100.0);
 
             let hash = match compute_hash(Path::new(path), if self.config.bytes == 0 {
                 if size > 100_000_000 {

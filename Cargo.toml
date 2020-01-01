@@ -5,5 +5,6 @@ members = [
     "filter-paths",
     "hash-paths",
     "detect-dups",
-    "unique-paths"
+    "unique-paths",
+    "copy-files"
 ]

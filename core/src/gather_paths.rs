@@ -1,7 +1,7 @@
 use crate::common::{Debug, TraverseMode};
 use crate::internals::Reporter;
 use std::fs::{read_dir, DirEntry, File, Metadata};
-use std::io::{Result};
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::time::{Instant};
 use size_format::{SizeFormatterSI};
@@ -96,7 +96,7 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
     if let Debug::On = ctx.config.debug {
         print!("path: {:?}", path);
     }
-    ctx.write_field(path.to_str().unwrap())?;
+    ctx.write_field(path.to_str().ok_or(std::io::Error::new(std::io::ErrorKind::Other, "Couldn't turn path into a str."))?)?;
     let size = metadata.len();
     if let Debug::On = ctx.config.debug {
         print!(", size: {}", size);

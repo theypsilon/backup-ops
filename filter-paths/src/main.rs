@@ -4,7 +4,7 @@ extern crate structopt_derive;
 
 use core::common::Debug;
 use core::filter_paths::{filter_paths, FilterPath, FilterPathsConfig};
-use std::io::Result;
+use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

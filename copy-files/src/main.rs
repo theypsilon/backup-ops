@@ -3,7 +3,7 @@ extern crate structopt;
 extern crate structopt_derive;
 
 use core::common::Debug;
-use core::hash_paths::{hash_paths, HashPathsConfig};
+use core::copy_files::{copy_files, CopyFilesConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -14,11 +14,8 @@ struct CliOpts {
     #[structopt(short = "i", long = "input", help = "Input file")]
     source_file: String,
 
-    #[structopt(short = "o", long = "output", help = "Output file")]
-    target_file: String,
-
-    #[structopt(short = "b", long = "bytes", help = "Determine how many bytes are readed to calculate the hash. Zero means all bytes. Default value is 0.")]
-    bytes: Option<u64>,
+    #[structopt(short = "o", long = "output", help = "Output folder")]
+    target_folder: String,
 
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
@@ -28,15 +25,10 @@ struct CliOpts {
 }
 
 impl CliOpts {
-    fn into_config(self) -> HashPathsConfig {
-        HashPathsConfig {
+    fn into_config(self) -> CopyFilesConfig {
+        CopyFilesConfig {
             source_file: PathBuf::from(&self.source_file),
-            target_file: PathBuf::from(&self.target_file),
-            bytes: if let Some(bytes) = self.bytes {
-                bytes
-            } else {
-                0
-            },
+            target_folder: PathBuf::from(&self.target_folder),
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }
@@ -44,5 +36,5 @@ impl CliOpts {
 }
 
 fn main() -> Result<()> {
-    hash_paths(CliOpts::from_args().into_config())
+    copy_files(CliOpts::from_args().into_config())
 }

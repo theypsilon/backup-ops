@@ -4,7 +4,7 @@ extern crate structopt_derive;
 
 use core::common::{Debug};
 use core::unique_paths::{unique_paths, UniquePathsConfig};
-use std::io::Result;
+use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

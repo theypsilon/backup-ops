@@ -34,9 +34,9 @@ struct Context {
 }
 
 impl Context {
-    pub fn new(config: HashPathsConfig) -> Result<Self> {
+    pub fn new(mut config: HashPathsConfig) -> Result<Self> {
         Ok(Context {
-            reporter: Reporter::new(config.error_log.clone(), config.debug),
+            reporter: Reporter::new(config.error_log.take(), config.debug),
             config,
             lines_written: 0,
         })

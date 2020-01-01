@@ -40,10 +40,10 @@ struct Context {
 }
 
 impl Context {
-    pub fn new(config: GatherPathsConfig) -> Result<Context> {
+    pub fn new(mut config: GatherPathsConfig) -> Result<Context> {
         Ok(Context {
             csv_out: csv::Writer::from_writer(File::create(&config.target_file)?),
-            reporter: Reporter::new(config.error_log.clone(), config.debug),
+            reporter: Reporter::new(config.error_log.take(), config.debug),
             config,
             lines_written: 0,
             total_size: 0,

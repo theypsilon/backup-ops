@@ -1,8 +1,11 @@
 use crate::common::{Debug, TraverseMode};
+use crate::internals::Reporter;
 use std::fs::{read_dir, DirEntry, File, Metadata};
-use std::io::{Result, Write};
+use std::io::{Result};
 use std::path::{Path, PathBuf};
 use std::time::{Instant};
+use size_format::{SizeFormatterSI};
+use num_format::{Locale, ToFormattedString};
 
 #[derive(Debug)]
 pub struct GatherPathsConfig {
@@ -16,36 +19,34 @@ pub struct GatherPathsConfig {
 pub fn gather_paths(config: GatherPathsConfig) -> Result<()> {
     println!("GATHER PATHS | config: {:?}", config);
     let now = Instant::now();
-    let mut ctx = Context::new(&config)?;
-    for path in config.source_paths.iter() {
+    let mut ctx = Context::new(config)?;
+    for path in ctx.config.source_paths.clone().iter() {
         process_path(&mut ctx, path)?;
     }
     ctx.end_writing()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written, config.target_file);
-    println!("Errors: {} ({:?})", ctx.errors_reported, config.error_log);
+    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
+    println!("Size of all files: {}B", SizeFormatterSI::new(ctx.total_size));
+    println!("Errors: {} ({:?})", ctx.reporter.error_count().to_formatted_string(&Locale::en), ctx.config.error_log);
     Ok(())
 }
 
-struct Context<'a> {
-    config: &'a GatherPathsConfig,
-    error_file: Option<File>,
-    errors_reported: u64,
+struct Context {
+    config: GatherPathsConfig,
+    reporter: Reporter,
     lines_written: u64,
     csv_out: csv::Writer<File>,
+    total_size: u64,
 }
 
-impl Context<'_> {
-    pub fn new<'a>(config: &'a GatherPathsConfig) -> Result<Context<'a>> {
+impl Context {
+    pub fn new(config: GatherPathsConfig) -> Result<Context> {
         Ok(Context {
-            config,
-            error_file: match config.error_log {
-                Some(ref name) => Some(File::create(&name)?),
-                None => None,
-            },
-            errors_reported: 0,
-            lines_written: 0,
             csv_out: csv::Writer::from_writer(File::create(&config.target_file)?),
+            reporter: Reporter::new(config.error_log.clone(), config.debug),
+            config,
+            lines_written: 0,
+            total_size: 0,
         })
     }
     fn write_field(&mut self, data: &str) -> Result<()> {
@@ -58,26 +59,6 @@ impl Context<'_> {
         Ok(())
     }
     fn end_writing(&mut self) -> Result<()> {
-        Ok(())
-    }
-    fn report_error<T: std::error::Error + std::fmt::Display>(
-        &mut self,
-        entry: &DirEntry,
-        error: T,
-    ) -> Result<()> {
-        self.errors_reported += 1;
-        if let Some(error_file) = &mut self.error_file {
-            error_file
-                .write_all(&format!("entry: {:?}, error: {:?}\n", entry, error).as_bytes())?;
-        }
-        let debugging = if let Debug::On = self.config.debug {
-            true
-        } else {
-            false
-        };
-        if debugging || self.error_file.is_none() {
-            println!("entry: {:?}, error: {:?}", entry, error);
-        }
         Ok(())
     }
 }
@@ -102,7 +83,7 @@ fn process_path(ctx: &mut Context, path: &Path) -> Result<()> {
 fn process_file_1(ctx: &mut Context, entry: &DirEntry) -> Result<()> {
     match process_file_2(ctx, entry) {
         Ok(()) => {}
-        Err(e) => ctx.report_error(entry, e)?,
+        Err(e) => ctx.reporter.report_error(entry, e)?,
     };
     Ok(())
 }
@@ -116,11 +97,12 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
         print!("path: {:?}", path);
     }
     ctx.write_field(path.to_str().unwrap())?;
-    let size = format_size(metadata.len());
+    let size = metadata.len();
     if let Debug::On = ctx.config.debug {
         print!(", size: {}", size);
     }
-    ctx.write_field(&size)?;
+    ctx.total_size += size;
+    ctx.write_field(&size.to_string())?;
     ctx.write_field("NULL")?;
     ctx.write_eol()?;
     if let Debug::On = ctx.config.debug {
@@ -129,14 +111,10 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
     Ok(())
 }
 
-fn format_size(len: u64) -> String {
-    format!("{}", len)
-}
-
 fn process_dir_1(ctx: &mut Context, entry: &DirEntry) -> Result<()> {
     match process_dir_2(ctx, entry) {
         Ok(()) => {}
-        Err(e) => ctx.report_error(entry, e)?,
+        Err(e) => ctx.reporter.report_error(entry, e)?,
     };
     Ok(())
 }

@@ -3,3 +3,4 @@
 *.csv
 *.json
 **/*.rs.bk
+/out/

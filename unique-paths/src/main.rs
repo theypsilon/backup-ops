@@ -20,6 +20,9 @@ struct CliOpts {
     #[structopt(short="o", long="output", help = "Output file")]
     target_file: String,
 
+    #[structopt(short="p", long="only-paths", help = "Only output paths, and not the full record.")]
+    only_paths: bool,
+    
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 
@@ -33,6 +36,7 @@ impl CliOpts {
             paths_file: PathBuf::from(&self.paths_file),
             dups_file: PathBuf::from(&self.dups_file),
             target_file: PathBuf::from(&self.target_file),
+            only_paths: self.only_paths,
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

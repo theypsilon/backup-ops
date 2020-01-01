@@ -1,9 +1,10 @@
 use crate::common::{Debug};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Result, Write};
+use std::io::{Result, Write, BufReader, BufWriter};
 use std::path::{PathBuf};
 use std::time::Instant;
+use num_format::{Locale, ToFormattedString};
 
 #[derive(Debug)]
 pub struct DetectDupsConfig {
@@ -16,18 +17,17 @@ pub struct DetectDupsConfig {
 pub fn detect_dups(config: DetectDupsConfig) -> Result<()> {
     println!("DETECT DUPS | config: {:?}", config);
     let now = Instant::now();
-    let mut ctx = Context::new(&config)?;
+    let mut ctx = Context::new(config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written, config.target_file);
-    println!("Paths included: {}", ctx.paths_included);
-    println!("Errors: {} ({:?})", 0, config.error_log);
+    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
+    println!("Paths included: {}", ctx.paths_included.to_formatted_string(&Locale::en));
+    println!("Errors: {} ({:?})", 0, ctx.config.error_log);
     Ok(())
 }
 
 struct Context {
-    input: File,
-    output: File,
+    config: DetectDupsConfig,
     lines_written: u64,
     paths_included: u64,
 }
@@ -39,17 +39,17 @@ struct DupEntry {
 }
 
 impl Context {
-    pub fn new<'a>(config: &'a DetectDupsConfig) -> Result<Self> {
+    pub fn new<'a>(config: DetectDupsConfig) -> Result<Self> {
         Ok(Context {
-            input: File::open(&config.source_file)?,
-            output: File::create(&config.target_file)?,
+            config,
             lines_written: 0,
             paths_included: 0
         })
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let mut reader = csv::Reader::from_reader(&self.input);
+        let input = BufReader::new(File::open(&self.config.source_file)?);
+        let mut reader = csv::Reader::from_reader(input);
         let mut set: HashMap<String, (String, String)> = HashMap::new();
         let mut dups: HashMap<String, DupEntry> = HashMap::new();
         for record in reader.records() {
@@ -71,29 +71,31 @@ impl Context {
         }
         let mut result: Vec<_> = dups.into_iter().map(|pair| pair.1).collect();
         result.sort_by(|a, b| std::cmp::Ord::cmp(&a.dups[0], &b.dups[0]));
-        write!(self.output, "[\n")?;
+
+        let mut output = BufWriter::new(File::create(&self.config.target_file)?);
+        write!(output, "[\n")?;
         let mut first_line = true;
         for v in result.into_iter() {
             if first_line {
                 first_line = false;
             } else {
-                write!(self.output, ",\n")?;
+                write!(output, ",\n")?;
             }
             let mut first_dup = true;
             for p in v.dups {
                 if first_dup {
                     first_dup = false;
-                    write!(self.output, "\t[")?;
+                    write!(output, "\t[")?;
                 } else {
-                    write!(self.output, ", ")?;
+                    write!(output, ", ")?;
                 }
-                write!(self.output, "\"{}\"", p)?;
+                write!(output, "\"{}\"", p)?;
                 self.paths_included += 1;
             }
-            write!(self.output, "]")?;
+            write!(output, "]")?;
             self.lines_written += 1;
         }
-        write!(self.output, "\n]\n")?;
+        write!(output, "\n]\n")?;
         Ok(())
     }
 }

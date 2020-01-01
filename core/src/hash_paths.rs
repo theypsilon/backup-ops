@@ -1,9 +1,11 @@
 use crate::common::Debug;
+use crate::internals::Reporter;
 use std::fs::File;
-use std::io::Result;
+use std::io::{Result};
 use std::path::{PathBuf, Path};
 use std::time::Instant;
 use crate::internals::compute_hash;
+use num_format::{Locale, ToFormattedString};
 
 #[derive(Debug)]
 pub struct HashPathsConfig {
@@ -17,33 +19,31 @@ pub struct HashPathsConfig {
 pub fn hash_paths(config: HashPathsConfig) -> Result<()> {
     println!("HASH PATHS | config: {:?}", config);
     let now = Instant::now();
-    let mut ctx = Context::new(&config)?;
+    let mut ctx = Context::new(config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written, config.target_file);
-    println!("Errors: {} ({:?})", 0, config.error_log);
+    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
+    println!("Errors: {} ({:?})", ctx.reporter.error_count().to_formatted_string(&Locale::en), ctx.config.error_log);
     Ok(())
 }
 
-struct Context<'a> {
-    input: File,
-    output: File,
-    config: &'a HashPathsConfig,
+struct Context {
+    config: HashPathsConfig,
+    reporter: Reporter,
     lines_written: u64,
 }
 
-impl<'a> Context<'a> {
-    pub fn new(config: &'a HashPathsConfig) -> Result<Self> {
+impl Context {
+    pub fn new(config: HashPathsConfig) -> Result<Self> {
         Ok(Context {
-            input: File::open(&config.source_file)?,
-            output: File::create(&config.target_file)?,
+            reporter: Reporter::new(config.error_log.clone(), config.debug),
             config,
             lines_written: 0,
         })
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let mut reader = csv::Reader::from_reader(&self.input);
+        let mut reader = csv::Reader::from_reader(File::open(&self.config.source_file)?);
         let start_pos = reader.position().clone();
         let mut total_size = 0;
         for record in reader.records() {
@@ -52,13 +52,17 @@ impl<'a> Context<'a> {
             total_size += size;
         }
         reader.seek(start_pos)?;
-        let mut writer = csv::Writer::from_writer(&self.output);
+        let mut writer = csv::Writer::from_writer(File::create(&self.config.target_file)?);
         let mut current_size: u64 = 0;
         for record in reader.records() {
             let record = record?;
             let path = &record[0];
             let size = record[1].parse::<u64>().unwrap();
-            let hash = compute_hash(Path::new(path), if self.config.bytes == 0 {
+
+            current_size += size;
+            print!("\r{:.2}%", (current_size as f64 / total_size as f64) * 100.0);
+
+            let hash = match compute_hash(Path::new(path), if self.config.bytes == 0 {
                 if size > 100_000_000 {
                     0
                 } else {
@@ -70,16 +74,19 @@ impl<'a> Context<'a> {
                 } else {
                     size as usize
                 }
-            })?;
+            }) {
+                Ok(hash) => hash,
+                Err(e) => {
+                    self.reporter.report_error(&path.to_string(), e)?;
+                    continue;
+                },
+            };
             writer.write_field(&record[0])?;
             writer.write_field(&record[1])?;
             writer.write_field(&hash.to_string())?;
             writer.write_record(None::<&[u8]>)?;
             
             self.lines_written += 1;
-
-            current_size += size;
-            print!("\r{:.2}%", (current_size as f64 / total_size as f64) * 100.0);
         }
         println!();
         Ok(())

@@ -40,4 +40,5 @@ echo
 ./target/release/unique-paths \
     --input-dups ${OUT}/dups.json --input-paths ${OUT}/old_cds.csv --output ${OUT}/unique_cds.csv \
     --error-log ${OUT}/error_unique.log
+echo
 echo "DONE!"

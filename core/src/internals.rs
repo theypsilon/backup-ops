@@ -1,10 +1,10 @@
+use crate::common::Debug;
+use anyhow::Result;
 use sha1::{Digest, Sha1};
 use std::fmt::Write as _;
 use std::fs::File;
-use std::io::{Read, Write, BufReader};
+use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use anyhow::Result;
-use crate::common::Debug;
 
 pub fn compute_hash(path: &Path, size: usize) -> Result<String> {
     let mut file = File::open(&path)?;

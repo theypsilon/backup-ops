@@ -1,12 +1,12 @@
 use crate::common::Debug;
+use anyhow::Result;
+use num_format::{Locale, ToFormattedString};
+use size_format::SizeFormatterSI;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
-use std::collections::{HashMap, HashSet};
 use std::time::Instant;
-use size_format::{SizeFormatterSI};
-use num_format::{Locale, ToFormattedString};
-use anyhow::Result;
 
 #[derive(Debug)]
 pub struct FilterPathsConfig {
@@ -31,8 +31,15 @@ pub fn filter_paths(config: FilterPathsConfig) -> Result<()> {
     let mut ctx = Context::new(config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
-    println!("Size of all files: {}B", SizeFormatterSI::new(ctx.total_size));
+    println!(
+        "Written {} lines {:?}",
+        ctx.lines_written.to_formatted_string(&Locale::en),
+        ctx.config.target_file
+    );
+    println!(
+        "Size of all files: {}B",
+        SizeFormatterSI::new(ctx.total_size)
+    );
     println!("Errors: {} ({:?})", 0, ctx.config.error_log);
     Ok(())
 }
@@ -53,8 +60,10 @@ impl Context {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let mut reader = csv::Reader::from_reader(BufReader::new(File::open(&self.config.source_file)?));
-        let mut writer = csv::Writer::from_writer(BufWriter::new(File::create(&self.config.target_file)?));
+        let mut reader =
+            csv::Reader::from_reader(BufReader::new(File::open(&self.config.source_file)?));
+        let mut writer =
+            csv::Writer::from_writer(BufWriter::new(File::create(&self.config.target_file)?));
 
         let mut sizes: HashMap<u64, MapValue> = HashMap::with_capacity(100_000);
         let mut hashes: HashMap<String, MapValue> = HashMap::with_capacity(100_000);
@@ -92,7 +101,8 @@ impl Context {
             }
         }
         for record in records {
-            if (self.config.unique_hashes || self.config.unique_sizes) && !dups.contains(&record[0]) {
+            if (self.config.unique_hashes || self.config.unique_sizes) && !dups.contains(&record[0])
+            {
                 continue;
             }
             let size = record[1].parse::<u64>()?;
@@ -115,7 +125,9 @@ impl FilterPath {
     pub fn new(path: &str) -> Self {
         let case_insensitive = path.starts_with(":case-insensitive:!");
         let path = if case_insensitive {
-            path[":case-insensitive:!".len()..].to_string().to_lowercase()
+            path[":case-insensitive:!".len()..]
+                .to_string()
+                .to_lowercase()
         } else {
             path.into()
         };
@@ -153,9 +165,7 @@ struct MapValue {
 
 impl MapValue {
     pub fn new(path: String) -> Self {
-        MapValue {
-            path: Some(path),
-        }
+        MapValue { path: Some(path) }
     }
 }
 
@@ -271,11 +281,12 @@ mod test {
         assert_eq!(actual, true);
     }
 
-
     #[test]
     fn test_whitelist_end_case_insensitive_ok_is_not_filtered() {
         let mut config = FilterPathsConfig::default();
-        config.whitelist_path_ends.push(FilterPath::new(":case-insensitive:!.MP3"));
+        config
+            .whitelist_path_ends
+            .push(FilterPath::new(":case-insensitive:!.MP3"));
         let actual = is_filtered(
             &config,
             "/mnt/c/Users/Jose/Documents/Old_CDs 1/DVD 2/mIRC/DCC/01 - Oihu.mp3",

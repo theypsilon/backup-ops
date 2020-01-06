@@ -3,7 +3,7 @@
 set -euo pipefail
 
 INPUT="${1:-/mnt/c/}"
-OUT="$(pwd)/out/${2:-pics}"
+OUT="$(pwd)/out/${2:-music}"
 
 mkdir -p ${OUT}
 
@@ -17,10 +17,7 @@ echo
 ./target/release/filter-paths \
     --input ${OUT}/all_paths.csv --output ${OUT}/all_pics_1.csv \
     --error-log ${OUT}/errors_all_pics_1.log \
-    --whitelist-path-ends ":case-insensitive:!.png" ":case-insensitive:!.jpg" ":case-insensitive:!.jpeg" \
-        ":case-insensitive:!.gif" ":case-insensitive:!.bmp" ":case-insensitive:!.raw" ":case-insensitive:!.webp" \
-        ":case-insensitive:!.tiff" ":case-insensitive:!.svg" \
-    --whitelist-path-containing "/DSC" "/PIC" "/IMG" "/WhatsApp"
+    --whitelist-path-ends ":case-insensitive:!.mp3" ":case-insensitive:!.ogg"
 echo
 ./target/release/filter-paths \
     --input ${OUT}/all_pics_1.csv --output ${OUT}/filtered_1.csv \
@@ -50,7 +47,8 @@ echo
     --error-log ${OUT}/error_unique.log
 echo
 ./target/release/copy-files \
-    --input ${OUT}/unique.csv --output ${OUT}/pics/ \
-    --error-log ${OUT}/error_copy_files.log
+    --input ${OUT}/unique.csv --output ${OUT}/mp3/ \
+    --error-log ${OUT}/error_copy_files.log \
+    --flatten-output
 echo
 echo "DONE!"

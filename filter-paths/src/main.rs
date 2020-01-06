@@ -2,14 +2,17 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
+use anyhow::Result;
 use core::common::Debug;
 use core::filter_paths::{filter_paths, FilterPath, FilterPathsConfig};
-use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "filter-paths", about = "Filter paths according to given options.")]
+#[structopt(
+    name = "filter-paths",
+    about = "Filter paths according to given options."
+)]
 struct CliOpts {
     #[structopt(short = "i", long = "input", help = "Input file")]
     source_file: String,
@@ -32,10 +35,16 @@ struct CliOpts {
     )]
     size_max: Option<u64>,
 
-    #[structopt(long = "exclude-unique-sizes", help = "Exclude files that don't have the same size as other files in the set.")]
+    #[structopt(
+        long = "exclude-unique-sizes",
+        help = "Exclude files that don't have the same size as other files in the set."
+    )]
     unique_sizes: bool,
 
-    #[structopt(long = "exclude-unique-hashes", help = "Exclude files that don't have the same hash as other files in the set.")]
+    #[structopt(
+        long = "exclude-unique-hashes",
+        help = "Exclude files that don't have the same hash as other files in the set."
+    )]
     unique_hashes: bool,
 
     #[structopt(

@@ -1,11 +1,11 @@
 use crate::common::Debug;
-use crate::internals::Reporter;
-use std::fs::File;
-use anyhow::Result;
-use std::path::{PathBuf, Path};
-use std::time::Instant;
 use crate::internals::compute_hash;
+use crate::internals::Reporter;
+use anyhow::Result;
 use num_format::{Locale, ToFormattedString};
+use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct HashPathsConfig {
@@ -22,8 +22,16 @@ pub fn hash_paths(config: HashPathsConfig) -> Result<()> {
     let mut ctx = Context::new(config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
-    println!("Errors: {} ({:?})", ctx.reporter.error_count().to_formatted_string(&Locale::en), ctx.config.error_log);
+    println!(
+        "Written {} lines {:?}",
+        ctx.lines_written.to_formatted_string(&Locale::en),
+        ctx.config.target_file
+    );
+    println!(
+        "Errors: {} ({:?})",
+        ctx.reporter.error_count().to_formatted_string(&Locale::en),
+        ctx.config.error_log
+    );
     Ok(())
 }
 
@@ -60,32 +68,38 @@ impl Context {
             let size = record[1].parse::<u64>()?;
 
             current_size += size;
-            print!("\r{:.2}%        ", (current_size as f64 / total_size as f64) * 100.0);
+            print!(
+                "\r{:.2}%        ",
+                (current_size as f64 / total_size as f64) * 100.0
+            );
 
-            let hash = match compute_hash(Path::new(path), if self.config.bytes == 0 {
-                if size > 100_000_000 {
-                    0
+            let hash = match compute_hash(
+                Path::new(path),
+                if self.config.bytes == 0 {
+                    if size > 100_000_000 {
+                        0
+                    } else {
+                        size as usize
+                    }
                 } else {
-                    size as usize
-                }
-            } else {
-                if size > self.config.bytes {
-                    self.config.bytes as usize
-                } else {
-                    size as usize
-                }
-            }) {
+                    if size > self.config.bytes {
+                        self.config.bytes as usize
+                    } else {
+                        size as usize
+                    }
+                },
+            ) {
                 Ok(hash) => hash,
                 Err(e) => {
                     self.reporter.report_error(&path.to_string(), e)?;
                     continue;
-                },
+                }
             };
             writer.write_field(&record[0])?;
             writer.write_field(&record[1])?;
             writer.write_field(&hash.to_string())?;
             writer.write_record(None::<&[u8]>)?;
-            
+
             self.lines_written += 1;
         }
         println!();

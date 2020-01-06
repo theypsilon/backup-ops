@@ -1,12 +1,12 @@
-use crate::common::{Debug};
+use crate::common::Debug;
+use anyhow::Result;
+use num_format::{Locale, ToFormattedString};
+use size_format::SizeFormatterSI;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
-use size_format::{SizeFormatterSI};
-use num_format::{Locale, ToFormattedString};
-use anyhow::Result;
 
 #[derive(Debug)]
 pub struct UniquePathsConfig {
@@ -24,9 +24,19 @@ pub fn unique_paths(config: UniquePathsConfig) -> Result<()> {
     let mut ctx = Context::new(config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
-    println!("Paths discarded: {}", ctx.paths_discarded.to_formatted_string(&Locale::en));
-    println!("Size of all files: {}B", SizeFormatterSI::new(ctx.total_size));
+    println!(
+        "Written {} lines {:?}",
+        ctx.lines_written.to_formatted_string(&Locale::en),
+        ctx.config.target_file
+    );
+    println!(
+        "Paths discarded: {}",
+        ctx.paths_discarded.to_formatted_string(&Locale::en)
+    );
+    println!(
+        "Size of all files: {}B",
+        SizeFormatterSI::new(ctx.total_size)
+    );
     println!("Errors: {} ({:?})", 0, ctx.config.error_log);
     Ok(())
 }
@@ -55,7 +65,8 @@ impl Context {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let dups: Vec<Vec<String>> = serde_json::from_reader(BufReader::new(File::open(&self.config.dups_file)?))?;
+        let dups: Vec<Vec<String>> =
+            serde_json::from_reader(BufReader::new(File::open(&self.config.dups_file)?))?;
         let mut skip_set: HashSet<String> = HashSet::new();
         for dup in dups.into_iter() {
             for path in dup.into_iter().skip(1) {
@@ -63,8 +74,10 @@ impl Context {
             }
         }
         self.paths_discarded = skip_set.len() as u64;
-        let mut paths = csv::Reader::from_reader(BufReader::new(File::open(&self.config.paths_file)?));
-        let mut output = csv::Writer::from_writer(BufWriter::new(File::create(&self.config.target_file)?));
+        let mut paths =
+            csv::Reader::from_reader(BufReader::new(File::open(&self.config.paths_file)?));
+        let mut output =
+            csv::Writer::from_writer(BufWriter::new(File::create(&self.config.target_file)?));
         for record in paths.records() {
             let record = record?;
             let path = &record[0];

@@ -1,11 +1,11 @@
-use crate::common::{Debug};
+use crate::common::Debug;
+use anyhow::Result;
+use num_format::{Locale, ToFormattedString};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Write, BufReader, BufWriter};
-use std::path::{PathBuf};
+use std::io::{BufReader, BufWriter, Write};
+use std::path::PathBuf;
 use std::time::Instant;
-use num_format::{Locale, ToFormattedString};
-use anyhow::Result;
 
 #[derive(Debug)]
 pub struct DetectDupsConfig {
@@ -21,8 +21,15 @@ pub fn detect_dups(config: DetectDupsConfig) -> Result<()> {
     let mut ctx = Context::new(config)?;
     ctx.process()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
-    println!("Paths included: {}", ctx.paths_included.to_formatted_string(&Locale::en));
+    println!(
+        "Written {} lines {:?}",
+        ctx.lines_written.to_formatted_string(&Locale::en),
+        ctx.config.target_file
+    );
+    println!(
+        "Paths included: {}",
+        ctx.paths_included.to_formatted_string(&Locale::en)
+    );
     println!("Errors: {} ({:?})", 0, ctx.config.error_log);
     Ok(())
 }
@@ -44,7 +51,7 @@ impl Context {
         Ok(Context {
             config,
             lines_written: 0,
-            paths_included: 0
+            paths_included: 0,
         })
     }
 
@@ -59,12 +66,24 @@ impl Context {
             let key = record[2].to_string();
             if let Some((other_file, other_size)) = set.get(&key) {
                 if other_size != &record[1] {
-                    Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Collision detected between: '{}' and '{}'", &record[0], other_file)))?;
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!(
+                            "Collision detected between: '{}' and '{}'",
+                            &record[0], other_file
+                        ),
+                    ))?;
                 }
                 if let Some(v) = dups.get_mut(&key) {
                     v.dups.push(record[0].into());
                 } else {
-                    dups.insert(key, DupEntry { dups: vec![other_file.clone(), record[0].into()], size: other_size.into() });
+                    dups.insert(
+                        key,
+                        DupEntry {
+                            dups: vec![other_file.clone(), record[0].into()],
+                            size: other_size.into(),
+                        },
+                    );
                 }
             } else {
                 set.insert(key, (record[0].into(), record[1].into()));

@@ -1,11 +1,11 @@
 use crate::common::{Debug, TraverseMode};
 use crate::internals::Reporter;
-use std::fs::{read_dir, DirEntry, File, Metadata};
 use anyhow::Result;
-use std::path::{Path, PathBuf};
-use std::time::{Instant};
-use size_format::{SizeFormatterSI};
 use num_format::{Locale, ToFormattedString};
+use size_format::SizeFormatterSI;
+use std::fs::{read_dir, DirEntry, File, Metadata};
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 #[derive(Debug)]
 pub struct GatherPathsConfig {
@@ -25,9 +25,20 @@ pub fn gather_paths(config: GatherPathsConfig) -> Result<()> {
     }
     ctx.end_writing()?;
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!("Written {} lines {:?}", ctx.lines_written.to_formatted_string(&Locale::en), ctx.config.target_file);
-    println!("Size of all files: {}B", SizeFormatterSI::new(ctx.total_size));
-    println!("Errors: {} ({:?})", ctx.reporter.error_count().to_formatted_string(&Locale::en), ctx.config.error_log);
+    println!(
+        "Written {} lines {:?}",
+        ctx.lines_written.to_formatted_string(&Locale::en),
+        ctx.config.target_file
+    );
+    println!(
+        "Size of all files: {}B",
+        SizeFormatterSI::new(ctx.total_size)
+    );
+    println!(
+        "Errors: {} ({:?})",
+        ctx.reporter.error_count().to_formatted_string(&Locale::en),
+        ctx.config.error_log
+    );
     Ok(())
 }
 
@@ -96,7 +107,10 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
     if let Debug::On = ctx.config.debug {
         print!("path: {:?}", path);
     }
-    ctx.write_field(path.to_str().ok_or(std::io::Error::new(std::io::ErrorKind::Other, "Couldn't turn path into a str."))?)?;
+    ctx.write_field(path.to_str().ok_or(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        "Couldn't turn path into a str.",
+    ))?)?;
     let size = metadata.len();
     if let Debug::On = ctx.config.debug {
         print!(", size: {}", size);

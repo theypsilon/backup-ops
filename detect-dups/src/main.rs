@@ -2,19 +2,19 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use core::common::{Debug};
-use core::detect_dups::{detect_dups, DetectDupsConfig};
 use anyhow::Result;
+use core::common::Debug;
+use core::detect_dups::{detect_dups, DetectDupsConfig};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "detect-dups", about = "Detects dups from a set of paths.")]
 struct CliOpts {
-    #[structopt(short="i", long="input", help = "Input file")]
+    #[structopt(short = "i", long = "input", help = "Input file")]
     source_file: String,
 
-    #[structopt(short="o", long="output", help = "Output file")]
+    #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]

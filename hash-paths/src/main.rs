@@ -2,9 +2,9 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
+use anyhow::Result;
 use core::common::Debug;
 use core::hash_paths::{hash_paths, HashPathsConfig};
-use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -17,7 +17,11 @@ struct CliOpts {
     #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
-    #[structopt(short = "b", long = "bytes", help = "Determine how many bytes are readed to calculate the hash. Zero means all bytes. Default value is 0.")]
+    #[structopt(
+        short = "b",
+        long = "bytes",
+        help = "Determine how many bytes are readed to calculate the hash. Zero means all bytes. Default value is 0."
+    )]
     bytes: Option<u64>,
 
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]

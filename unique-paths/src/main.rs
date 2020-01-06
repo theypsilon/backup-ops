@@ -2,27 +2,34 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 
-use core::common::{Debug};
-use core::unique_paths::{unique_paths, UniquePathsConfig};
 use anyhow::Result;
+use core::common::Debug;
+use core::unique_paths::{unique_paths, UniquePathsConfig};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "unique-paths", about = "Generates a list from files that are unique.")]
+#[structopt(
+    name = "unique-paths",
+    about = "Generates a list from files that are unique."
+)]
 struct CliOpts {
-    #[structopt(long="input-paths", help = "Input paths")]
+    #[structopt(long = "input-paths", help = "Input paths")]
     paths_file: String,
 
-    #[structopt(long="input-dups", help = "Input duplicated files")]
+    #[structopt(long = "input-dups", help = "Input duplicated files")]
     dups_file: String,
 
-    #[structopt(short="o", long="output", help = "Output file")]
+    #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
-    #[structopt(short="p", long="only-paths", help = "Only output paths, and not the full record.")]
+    #[structopt(
+        short = "p",
+        long = "only-paths",
+        help = "Only output paths, and not the full record."
+    )]
     only_paths: bool,
-    
+
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 

@@ -1,5 +1,5 @@
 use crate::common::Debug;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashMap;
 use std::fs::File;
@@ -66,13 +66,7 @@ impl Context {
             let key = record[2].to_string();
             if let Some((other_file, other_size)) = set.get(&key) {
                 if other_size != &record[1] {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!(
-                            "Collision detected between: '{}' and '{}'",
-                            &record[0], other_file
-                        ),
-                    ))?;
+                    return Err(anyhow!("Collision detected between: '{}' and '{}'", &record[0], other_file));
                 }
                 if let Some(v) = dups.get_mut(&key) {
                     v.dups.push(record[0].into());

@@ -7,7 +7,7 @@ use sha2::Sha256;
 use sha2::Sha512;
 use std::fmt::Write as _;
 use std::fs::File;
-use std::io::{BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 pub fn compute_hash(path: &Path, size: usize, algo: HashAlgorithm) -> Result<String> {
@@ -21,14 +21,19 @@ pub fn compute_hash(path: &Path, size: usize, algo: HashAlgorithm) -> Result<Str
 
 fn compute_hash_internal(path: &Path, size: usize, mut sh: impl Digest) -> Result<String> {
     let mut file = File::open(&path)?;
+    let len = file.metadata()?.len();
     if size == 0 {
-        const BUFFER_SIZE: usize = 8096;
+        const BUFFER_SIZE: usize = 64768;
+        let mut readed: u64 = 0;
         let mut buffer = [0u8; BUFFER_SIZE];
-        let mut reader = BufReader::new(file);
         loop {
-            let n = reader.read(&mut buffer)?;
+            let n = file.read(&mut buffer)?;
+            readed += n as u64;
             sh.input(&buffer[..n]);
             if n == 0 || n < BUFFER_SIZE {
+                if readed != len {
+                    panic!("Readed and len not matching ({} != {})", readed, len);
+                }
                 break;
             }
         }

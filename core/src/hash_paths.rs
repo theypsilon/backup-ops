@@ -12,6 +12,7 @@ pub struct HashPathsConfig {
     pub source_file: PathBuf,
     pub target_file: PathBuf,
     pub bytes: u64,
+    pub algorithm: HashAlgorithm,
     pub debug: Debug,
     pub error_log: Option<PathBuf>,
 }
@@ -88,7 +89,7 @@ impl Context {
                         size as usize
                     }
                 },
-                HashAlgorithm::Sha1,
+                self.config.algorithm,
             ) {
                 Ok(hash) => hash,
                 Err(e) => {

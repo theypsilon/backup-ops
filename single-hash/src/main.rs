@@ -48,7 +48,7 @@ impl CliOpts {
             algorithm: if let Some(algo) = self.algorithm {
                 algo
             } else {
-                HashAlgorithm::Sha1
+                HashAlgorithm::Md5
             },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

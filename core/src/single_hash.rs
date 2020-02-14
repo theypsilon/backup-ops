@@ -1,4 +1,4 @@
-use crate::common::Debug;
+use crate::common::{Debug, HashAlgorithm};
 use crate::internals::compute_hash;
 use anyhow::{anyhow, Result};
 use size_format::SizeFormatterSI;
@@ -10,6 +10,7 @@ use std::time::Instant;
 pub struct SingleHashConfig {
     pub source_file: PathBuf,
     pub bytes: u64,
+    pub algorithm: HashAlgorithm,
     pub debug: Debug,
     pub error_log: Option<PathBuf>,
 }
@@ -21,10 +22,7 @@ pub fn single_hash(config: SingleHashConfig) -> Result<()> {
     let hash = ctx.process()?;
     println!("Calculated hash is: {}", hash);
     println!("Duration: {:#?}", (Instant::now() - now));
-    println!(
-        "File size: {}",
-        SizeFormatterSI::new(ctx.file_size)
-    );
+    println!("File size: {}", SizeFormatterSI::new(ctx.file_size));
     println!("Errors: {} ({:?})", 0, ctx.config.error_log);
     Ok(())
 }
@@ -38,7 +36,7 @@ impl Context {
     pub fn new(config: SingleHashConfig) -> Result<Self> {
         Ok(Context {
             config,
-            file_size: 0
+            file_size: 0,
         })
     }
 
@@ -47,7 +45,8 @@ impl Context {
         let metadata = file.metadata()?;
         if !metadata.is_file() || metadata.is_dir() {
             return Err(anyhow!(
-                "The path '{:?}' is not a normal file.", self.config.source_file
+                "The path '{:?}' is not a normal file.",
+                self.config.source_file
             ));
         }
         let size = metadata.len();
@@ -67,6 +66,7 @@ impl Context {
                     size as usize
                 }
             },
+            self.config.algorithm,
         )
     }
 }

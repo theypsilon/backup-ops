@@ -1,14 +1,26 @@
-use crate::common::Debug;
+use crate::common::{Debug, HashAlgorithm};
 use anyhow::Result;
-use sha1::{Digest, Sha1};
+use digest::Digest;
+use md5::Md5;
+use sha1::Sha1;
+use sha2::Sha256;
+use sha2::Sha512;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
-pub fn compute_hash(path: &Path, size: usize) -> Result<String> {
+pub fn compute_hash(path: &Path, size: usize, algo: HashAlgorithm) -> Result<String> {
+    match algo {
+        HashAlgorithm::Sha1 => compute_hash_internal(path, size, Sha1::default()),
+        HashAlgorithm::Md5 => compute_hash_internal(path, size, Md5::default()),
+        HashAlgorithm::Sha256 => compute_hash_internal(path, size, Sha256::default()),
+        HashAlgorithm::Sha512 => compute_hash_internal(path, size, Sha512::default()),
+    }
+}
+
+fn compute_hash_internal(path: &Path, size: usize, mut sh: impl Digest) -> Result<String> {
     let mut file = File::open(&path)?;
-    let mut sh = Sha1::default();
     if size == 0 {
         const BUFFER_SIZE: usize = 8096;
         let mut buffer = [0u8; BUFFER_SIZE];

@@ -66,7 +66,11 @@ impl Context {
             let key = record[2].to_string();
             if let Some((other_file, other_size)) = set.get(&key) {
                 if other_size != &record[1] {
-                    return Err(anyhow!("Collision detected between: '{}' and '{}'", &record[0], other_file));
+                    return Err(anyhow!(
+                        "Collision detected between: '{}' and '{}'",
+                        &record[0],
+                        other_file
+                    ));
                 }
                 if let Some(v) = dups.get_mut(&key) {
                     v.dups.push(record[0].into());

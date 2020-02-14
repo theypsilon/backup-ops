@@ -5,5 +5,5 @@ pub mod filter_paths;
 pub mod gather_paths;
 pub mod hash_paths;
 mod internals;
-pub mod unique_paths;
 pub mod single_hash;
+pub mod unique_paths;

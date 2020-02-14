@@ -1,4 +1,4 @@
-use crate::common::Debug;
+use crate::common::{Debug, HashAlgorithm};
 use crate::internals::compute_hash;
 use crate::internals::Reporter;
 use anyhow::Result;
@@ -88,6 +88,7 @@ impl Context {
                         size as usize
                     }
                 },
+                HashAlgorithm::Sha1,
             ) {
                 Ok(hash) => hash,
                 Err(e) => {

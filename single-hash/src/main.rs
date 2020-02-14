@@ -3,7 +3,7 @@ extern crate structopt;
 extern crate structopt_derive;
 
 use anyhow::Result;
-use core::common::Debug;
+use core::common::{Debug, HashAlgorithm};
 use core::single_hash::{single_hash, SingleHashConfig};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -24,6 +24,13 @@ struct CliOpts {
     )]
     bytes: Option<u64>,
 
+    #[structopt(
+        short = "a",
+        long = "algorithm",
+        help = "Choose hash algorithm. Default algorithm is Sha1."
+    )]
+    algorithm: Option<HashAlgorithm>,
+
     #[structopt(short = "e", long = "error-log", help = "Error log file.")]
     error_log: Option<String>,
 }
@@ -37,6 +44,11 @@ impl CliOpts {
                 bytes
             } else {
                 0
+            },
+            algorithm: if let Some(algo) = self.algorithm {
+                algo
+            } else {
+                HashAlgorithm::Sha1
             },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

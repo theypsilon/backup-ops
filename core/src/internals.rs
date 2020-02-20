@@ -10,6 +10,15 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Record {
+    pub path: String,
+    pub size: u64,
+    pub hash: String,
+}
+
 pub fn compute_hash(path: &Path, size: usize, algo: HashAlgorithm) -> Result<String> {
     match algo {
         HashAlgorithm::Sha1 => compute_hash_internal(path, size, Sha1::default()),

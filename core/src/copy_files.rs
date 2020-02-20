@@ -1,5 +1,5 @@
 use crate::common::Debug;
-use crate::internals::Reporter;
+use crate::internals::{Record, Reporter};
 use anyhow::{anyhow, Result};
 use num_format::{Locale, ToFormattedString};
 use regex::Regex;
@@ -61,37 +61,26 @@ impl Context {
 
     pub fn process(&mut self) -> Result<()> {
         let mut reader = csv::Reader::from_reader(File::open(&self.config.source_file)?);
-        let start_pos = reader.position().clone();
         let mut total_size = 0;
-        for record in reader.records() {
-            let record = record?;
-            if record.len() > 1 {
-                let size = record[1].parse::<u64>()?;
-                total_size += size;
-            } else {
-                total_size = 0;
-                break;
-            }
+        for record in reader.deserialize() {
+            let record: Record = record?;
+            total_size += record.size;
         }
         std::fs::create_dir(&Path::new(&self.config.target_folder))?;
         let mut target_path_generator =
             TargetPathGenerator::new(self.config.flatten_output, &self.config.target_folder);
-        reader.seek(start_pos)?;
+        let mut reader = csv::Reader::from_reader(File::open(&self.config.source_file)?);
         let mut current_size: u64 = 0;
-        for record in reader.records() {
-            let record = record?;
+        for record in reader.deserialize() {
+            let record: Record = record?;
 
-            if total_size > 0 {
-                let size = record[1].parse::<u64>()?;
+            current_size += record.size;
+            print!(
+                "\r{:.2}%        ",
+                (current_size as f64 / total_size as f64) * 100.0
+            );
 
-                current_size += size;
-                print!(
-                    "\r{:.2}%        ",
-                    (current_size as f64 / total_size as f64) * 100.0
-                );
-            }
-
-            let source_path = Path::new(&record[0]);
+            let source_path = Path::new(&record.path);
             let target_path = target_path_generator.get_target_path(source_path)?;
             if !self.config.flatten_output {
                 std::fs::create_dir_all(&target_path.parent().ok_or(std::io::Error::new(
@@ -102,19 +91,21 @@ impl Context {
             if let Debug::On = self.config.debug {
                 print!("Copying {:?} to {:?}", source_path, target_path);
             }
-            match std::fs::copy(&source_path, target_path) {
+            match std::fs::copy(&source_path, &target_path) {
                 Ok(size) => self.copied_size += size,
                 Err(e) => {
                     self.reporter.report_error(&source_path, e)?;
                     continue;
                 }
             }
+            debug_assert_eq!(
+                std::fs::metadata(source_path)?.modified()?,
+                std::fs::metadata(target_path)?.modified()?
+            );
 
             self.lines_written += 1;
         }
-        if total_size > 0 {
-            println!();
-        }
+        println!();
         Ok(())
     }
 }

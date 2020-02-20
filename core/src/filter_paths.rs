@@ -1,10 +1,10 @@
 use crate::common::Debug;
+use crate::internals::Record;
 use anyhow::Result;
 use num_format::{Locale, ToFormattedString};
 use size_format::SizeFormatterSI;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -60,55 +60,52 @@ impl Context {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let mut reader =
-            csv::Reader::from_reader(BufReader::new(File::open(&self.config.source_file)?));
-        let mut writer =
-            csv::Writer::from_writer(BufWriter::new(File::create(&self.config.target_file)?));
+        let mut reader = csv::Reader::from_reader(File::open(&self.config.source_file)?);
+        let mut writer = csv::Writer::from_writer(File::create(&self.config.target_file)?);
 
         let mut sizes: HashMap<u64, MapValue> = HashMap::with_capacity(100_000);
         let mut hashes: HashMap<String, MapValue> = HashMap::with_capacity(100_000);
 
         let mut dups: HashSet<String> = HashSet::with_capacity(100_000);
-        let mut records: Vec<csv::StringRecord> = Vec::with_capacity(100_000);
-        for record in reader.records() {
-            let record = record?;
-            let path = &record[0];
-            let size = record[1].parse::<u64>()?;
-            if is_filtered(&self.config, path, size) {
+        let mut records: Vec<Record> = Vec::with_capacity(100_000);
+        for record in reader.deserialize() {
+            let record: Record = record?;
+            let path = &record.path;
+            if is_filtered(&self.config, &path, record.size) {
                 continue;
             }
-            records.push(record.clone());
             if self.config.unique_sizes {
-                if let Some(other) = sizes.get_mut(&size) {
+                if let Some(other) = sizes.get_mut(&record.size) {
                     dups.insert(path.into());
                     if let Some(other_path) = other.path.take() {
                         dups.insert(other_path);
                     }
                 } else {
-                    sizes.insert(size, MapValue::new(path.into()));
+                    sizes.insert(record.size, MapValue::new(path.into()));
                 }
             }
             if self.config.unique_hashes {
-                let hash: String = (&record[2]).into();
-                if let Some(other) = hashes.get_mut(&hash) {
+                let hash = &record.hash;
+                if let Some(other) = hashes.get_mut(hash) {
                     dups.insert(path.into());
                     if let Some(other_path) = other.path.take() {
                         dups.insert(other_path);
                     }
                 } else {
-                    hashes.insert(hash, MapValue::new(path.into()));
+                    hashes.insert(hash.clone(), MapValue::new(path.into()));
                 }
             }
+            records.push(record);
         }
         for record in records {
-            if (self.config.unique_hashes || self.config.unique_sizes) && !dups.contains(&record[0])
+            if (self.config.unique_hashes || self.config.unique_sizes)
+                && !dups.contains(&record.path)
             {
                 continue;
             }
-            let size = record[1].parse::<u64>()?;
-            self.total_size += size;
+            self.total_size += record.size;
 
-            writer.write_record(&record)?;
+            writer.serialize(record)?;
             self.lines_written += 1;
         }
         Ok(())

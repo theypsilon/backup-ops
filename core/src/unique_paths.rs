@@ -1,10 +1,10 @@
 use crate::common::Debug;
+use crate::internals::Record;
 use anyhow::Result;
 use num_format::{Locale, ToFormattedString};
 use size_format::SizeFormatterSI;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -65,8 +65,7 @@ impl Context {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let dups: Vec<Vec<String>> =
-            serde_json::from_reader(BufReader::new(File::open(&self.config.dups_file)?))?;
+        let dups: Vec<Vec<String>> = serde_json::from_reader(File::open(&self.config.dups_file)?)?;
         let mut skip_set: HashSet<String> = HashSet::new();
         for dup in dups.into_iter() {
             for path in dup.into_iter().skip(1) {
@@ -74,25 +73,21 @@ impl Context {
             }
         }
         self.paths_discarded = skip_set.len() as u64;
-        let mut paths =
-            csv::Reader::from_reader(BufReader::new(File::open(&self.config.paths_file)?));
-        let mut output =
-            csv::Writer::from_writer(BufWriter::new(File::create(&self.config.target_file)?));
-        for record in paths.records() {
-            let record = record?;
-            let path = &record[0];
+        let mut paths = csv::Reader::from_reader(File::open(&self.config.paths_file)?);
+        let mut output = csv::Writer::from_writer(File::create(&self.config.target_file)?);
+        for record in paths.deserialize() {
+            let record: Record = record?;
+            let path = &record.path;
             if skip_set.contains(path) {
                 continue;
             }
             if self.config.only_paths {
-                output.write_field(&record[0])?;
+                output.write_field(path)?;
                 output.write_record(None::<&[u8]>)?;
             } else {
-                output.write_record(&record)?;
+                output.serialize(&record)?;
             }
-            let size = record[1].parse::<u64>()?;
-
-            self.total_size += size;
+            self.total_size += record.size;
             self.lines_written += 1;
         }
         Ok(())

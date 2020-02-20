@@ -1,9 +1,10 @@
 use crate::common::Debug;
+use crate::internals::Record;
 use anyhow::{anyhow, Result};
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -40,11 +41,7 @@ struct Context {
     paths_included: u64,
 }
 
-#[derive(Debug)]
-struct DupEntry {
-    pub dups: Vec<String>,
-    pub size: String,
-}
+type DupEntry = Vec<String>;
 
 impl Context {
     pub fn new<'a>(config: DetectDupsConfig) -> Result<Self> {
@@ -56,51 +53,45 @@ impl Context {
     }
 
     pub fn process(&mut self) -> Result<()> {
-        let input = BufReader::new(File::open(&self.config.source_file)?);
+        let input = File::open(&self.config.source_file)?;
         let mut reader = csv::Reader::from_reader(input);
-        let mut set: HashMap<String, (String, String)> = HashMap::new();
-        let mut dups: HashMap<String, DupEntry> = HashMap::new();
-        for record in reader.records() {
-            let record = record?;
-            assert_eq!(record.len(), 3);
-            let key = record[2].to_string();
+        let mut set: HashMap<String, (String, u64)> = HashMap::new();
+        let mut dup_map: HashMap<String, DupEntry> = HashMap::new();
+        for record in reader.deserialize() {
+            let record: Record = record?;
+            let key = record.hash.clone();
             if let Some((other_file, other_size)) = set.get(&key) {
-                if other_size != &record[1] {
+                if *other_size != record.size {
                     return Err(anyhow!(
                         "Collision detected between: '{}' and '{}'",
-                        &record[0],
+                        &record.path,
                         other_file
                     ));
                 }
-                if let Some(v) = dups.get_mut(&key) {
-                    v.dups.push(record[0].into());
+                if let Some(v) = dup_map.get_mut(&key) {
+                    v.push(record.path.into());
                 } else {
-                    dups.insert(
-                        key,
-                        DupEntry {
-                            dups: vec![other_file.clone(), record[0].into()],
-                            size: other_size.into(),
-                        },
-                    );
+                    dup_map.insert(key, vec![other_file.clone(), record.path.into()]);
                 }
             } else {
-                set.insert(key, (record[0].into(), record[1].into()));
+                set.insert(key, (record.path.into(), record.size.into()));
             }
         }
-        let mut result: Vec<_> = dups.into_iter().map(|pair| pair.1).collect();
-        result.sort_by(|a, b| std::cmp::Ord::cmp(&a.dups[0], &b.dups[0]));
+        let mut dup_entries: Vec<_> = dup_map.into_iter().map(|pair| pair.1).collect();
+        dup_entries.iter_mut().for_each(|v| v.sort_by(std::cmp::Ord::cmp));
+        dup_entries.sort_by(|a, b| std::cmp::Ord::cmp(&a[0], &b[0]));
 
-        let mut output = BufWriter::new(File::create(&self.config.target_file)?);
+        let mut output = File::create(&self.config.target_file)?;
         write!(output, "[\n")?;
         let mut first_line = true;
-        for v in result.into_iter() {
+        for dup_entry in dup_entries.into_iter() {
             if first_line {
                 first_line = false;
             } else {
                 write!(output, ",\n")?;
             }
             let mut first_dup = true;
-            for p in v.dups {
+            for p in dup_entry {
                 if first_dup {
                     first_dup = false;
                     write!(output, "\t[")?;

@@ -1,6 +1,5 @@
 use crate::common::{Debug, HashAlgorithm};
-use crate::internals::compute_hash;
-use crate::internals::Reporter;
+use crate::internals::{compute_hash, Record, Reporter};
 use anyhow::Result;
 use num_format::{Locale, ToFormattedString};
 use std::fs::File;
@@ -53,20 +52,18 @@ impl Context {
 
     pub fn process(&mut self) -> Result<()> {
         let mut reader = csv::Reader::from_reader(File::open(&self.config.source_file)?);
-        let start_pos = reader.position().clone();
         let mut total_size = 0;
-        for record in reader.records() {
-            let record = record?;
-            let size = record[1].parse::<u64>()?;
-            total_size += size;
+        for record in reader.deserialize() {
+            let record: Record = record?;
+            total_size += record.size;
         }
-        reader.seek(start_pos)?;
+        let mut reader = csv::Reader::from_reader(File::open(&self.config.source_file)?);
         let mut writer = csv::Writer::from_writer(File::create(&self.config.target_file)?);
         let mut current_size: u64 = 0;
-        for record in reader.records() {
-            let record = record?;
-            let path = &record[0];
-            let size = record[1].parse::<u64>()?;
+        for record in reader.deserialize() {
+            let mut record: Record = record?;
+            let path = &record.path;
+            let size = record.size;
 
             current_size += size;
             print!(
@@ -74,7 +71,7 @@ impl Context {
                 (current_size as f64 / total_size as f64) * 100.0
             );
 
-            let hash = match compute_hash(
+            record.hash = match compute_hash(
                 Path::new(path),
                 if self.config.bytes == 0 {
                     if size > 100_000_000 {
@@ -97,11 +94,7 @@ impl Context {
                     continue;
                 }
             };
-            writer.write_field(&record[0])?;
-            writer.write_field(&record[1])?;
-            writer.write_field(&hash.to_string())?;
-            writer.write_record(None::<&[u8]>)?;
-
+            writer.serialize(record)?;
             self.lines_written += 1;
         }
         println!();

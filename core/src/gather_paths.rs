@@ -1,6 +1,6 @@
 use crate::common::{Debug, TraverseMode};
-use crate::internals::Reporter;
-use anyhow::Result;
+use crate::internals::{Record, Reporter};
+use anyhow::{anyhow, Result};
 use num_format::{Locale, ToFormattedString};
 use size_format::SizeFormatterSI;
 use std::fs::{read_dir, DirEntry, File, Metadata};
@@ -20,8 +20,10 @@ pub fn gather_paths(config: GatherPathsConfig) -> Result<()> {
     println!("GATHER PATHS | config: {:?}", config);
     let now = Instant::now();
     let mut ctx = Context::new(config)?;
-    for path in ctx.config.source_paths.clone().iter() {
-        process_path(&mut ctx, path)?;
+    let mut source_paths = ctx.config.source_paths.clone();
+    source_paths.sort_by(std::cmp::Ord::cmp);
+    for path in source_paths.into_iter() {
+        process_path(&mut ctx, &path)?;
     }
     ctx.end_writing()?;
     println!("Duration: {:#?}", (Instant::now() - now));
@@ -60,12 +62,8 @@ impl Context {
             total_size: 0,
         })
     }
-    fn write_field(&mut self, data: &str) -> Result<()> {
-        self.csv_out.write_field(data)?;
-        Ok(())
-    }
-    fn write_eol(&mut self) -> Result<()> {
-        self.csv_out.write_record(None::<&[u8]>)?;
+    fn write_record(&mut self, record: Record) -> Result<()> {
+        self.csv_out.serialize(record)?;
         self.lines_written += 1;
         Ok(())
     }
@@ -107,18 +105,19 @@ fn process_file_3(ctx: &mut Context, path: &Path, metadata: Metadata) -> Result<
     if let Debug::On = ctx.config.debug {
         print!("path: {:?}", path);
     }
-    ctx.write_field(path.to_str().ok_or(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "Couldn't turn path into a str.",
-    ))?)?;
-    let size = metadata.len();
+    let record = Record {
+        path: path
+            .to_str()
+            .ok_or_else(|| anyhow!("Couldn't turn path into a str."))?
+            .into(),
+        size: metadata.len(),
+        hash: "NULL".into(),
+    };
     if let Debug::On = ctx.config.debug {
-        print!(", size: {}", size);
+        print!(", size: {}", record.size);
     }
-    ctx.total_size += size;
-    ctx.write_field(&size.to_string())?;
-    ctx.write_field("NULL")?;
-    ctx.write_eol()?;
+    ctx.total_size += record.size;
+    ctx.write_record(record)?;
     if let Debug::On = ctx.config.debug {
         println!();
     }

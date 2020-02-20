@@ -78,7 +78,9 @@ impl Context {
             }
         }
         let mut dup_entries: Vec<_> = dup_map.into_iter().map(|pair| pair.1).collect();
-        dup_entries.iter_mut().for_each(|v| v.sort_by(std::cmp::Ord::cmp));
+        dup_entries
+            .iter_mut()
+            .for_each(|v| v.sort_by(std::cmp::Ord::cmp));
         dup_entries.sort_by(|a, b| std::cmp::Ord::cmp(&a[0], &b[0]));
 
         let mut output = File::create(&self.config.target_file)?;

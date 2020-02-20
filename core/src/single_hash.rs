@@ -53,19 +53,8 @@ impl Context {
         self.file_size = size;
         compute_hash(
             &self.config.source_file,
-            if self.config.bytes == 0 {
-                if size > 100_000_000 {
-                    0
-                } else {
-                    size as usize
-                }
-            } else {
-                if size > self.config.bytes {
-                    self.config.bytes as usize
-                } else {
-                    size as usize
-                }
-            },
+            size,
+            self.config.bytes,
             self.config.algorithm,
         )
     }

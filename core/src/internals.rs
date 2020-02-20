@@ -19,7 +19,25 @@ pub struct Record {
     pub hash: String,
 }
 
-pub fn compute_hash(path: &Path, size: usize, algo: HashAlgorithm) -> Result<String> {
+pub fn compute_hash(
+    path: &Path,
+    file_size: u64,
+    batch_size: u64,
+    algo: HashAlgorithm,
+) -> Result<String> {
+    let size = if batch_size == 0 {
+        if file_size > 100_000_000 {
+            0
+        } else {
+            file_size as usize
+        }
+    } else {
+        if file_size > batch_size {
+            batch_size as usize
+        } else {
+            file_size as usize
+        }
+    };
     match algo {
         HashAlgorithm::Sha1 => compute_hash_internal(path, size, Sha1::default()),
         HashAlgorithm::Md5 => compute_hash_internal(path, size, Md5::default()),

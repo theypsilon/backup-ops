@@ -17,6 +17,13 @@ struct CliOpts {
     #[structopt(short = "o", long = "output", help = "Output file")]
     target_file: String,
 
+    #[structopt(
+        short = "u",
+        long = "unsorted",
+        help = "Takes the source paths as-is, without sorting them."
+    )]
+    unsorted: bool,
+
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 
@@ -29,6 +36,7 @@ impl CliOpts {
         DetectDupsConfig {
             source_file: PathBuf::from(&self.source_file),
             target_file: PathBuf::from(&self.target_file),
+            unsorted: self.unsorted,
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

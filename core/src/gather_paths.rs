@@ -12,6 +12,7 @@ pub struct GatherPathsConfig {
     pub source_paths: Vec<PathBuf>,
     pub target_file: PathBuf,
     pub traverse_mode: TraverseMode,
+    pub unsorted: bool,
     pub debug: Debug,
     pub error_log: Option<PathBuf>,
 }
@@ -21,7 +22,9 @@ pub fn gather_paths(config: GatherPathsConfig) -> Result<()> {
     let now = Instant::now();
     let mut ctx = Context::new(config)?;
     let mut source_paths = ctx.config.source_paths.clone();
-    source_paths.sort_by(std::cmp::Ord::cmp);
+    if !ctx.config.unsorted {
+        source_paths.sort_by(std::cmp::Ord::cmp);
+    }
     for path in source_paths.into_iter() {
         process_path(&mut ctx, &path)?;
     }

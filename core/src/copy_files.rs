@@ -14,6 +14,7 @@ use std::time::Instant;
 pub struct CopyFilesConfig {
     pub source_file: PathBuf,
     pub target_folder: PathBuf,
+    pub show_progression: bool,
     pub debug: Debug,
     pub flatten_output: bool,
     pub error_log: Option<PathBuf>,
@@ -74,11 +75,13 @@ impl Context {
         for record in reader.deserialize() {
             let record: Record = record?;
 
-            current_size += record.size;
-            print!(
-                "\r{:.2}%        ",
-                (current_size as f64 / total_size as f64) * 100.0
-            );
+            if self.config.show_progression {
+                current_size += record.size;
+                print!(
+                    "\r{:.2}%        ",
+                    (current_size as f64 / total_size as f64) * 100.0
+                );
+            }
 
             let source_path = Path::new(&record.path);
             let target_path = target_path_generator.get_target_path(source_path)?;

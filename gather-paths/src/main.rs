@@ -24,6 +24,13 @@ struct CliOpts {
     )]
     recursive: bool,
 
+    #[structopt(
+        short = "u",
+        long = "unsorted",
+        help = "Takes the source paths as-is, without sorting them."
+    )]
+    unsorted: bool,
+
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 
@@ -41,6 +48,7 @@ impl CliOpts {
             } else {
                 TraverseMode::NonRecursive
             },
+            unsorted: self.unsorted,
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

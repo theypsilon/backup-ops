@@ -12,6 +12,7 @@ pub struct HashPathsConfig {
     pub target_file: PathBuf,
     pub bytes: u64,
     pub algorithm: HashAlgorithm,
+    pub show_progression: bool,
     pub debug: Debug,
     pub error_log: Option<PathBuf>,
 }
@@ -65,11 +66,13 @@ impl Context {
             let path = &record.path;
             let size = record.size;
 
-            current_size += size;
-            print!(
-                "\r{:.2}%        ",
-                (current_size as f64 / total_size as f64) * 100.0
-            );
+            if self.config.show_progression {
+                current_size += size;
+                print!(
+                    "\r{:.2}%        ",
+                    (current_size as f64 / total_size as f64) * 100.0
+                );
+            }
 
             record.hash = match compute_hash(
                 Path::new(path),

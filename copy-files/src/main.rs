@@ -24,6 +24,13 @@ struct CliOpts {
     )]
     flatten_output: bool,
 
+    #[structopt(
+        short = "p",
+        long = "show-progression",
+        help = "Show progression information."
+    )]
+    progression: bool,
+
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 
@@ -37,6 +44,7 @@ impl CliOpts {
             source_file: PathBuf::from(&self.source_file),
             target_folder: PathBuf::from(&self.target_folder),
             flatten_output: self.flatten_output,
+            show_progression: self.progression,
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }

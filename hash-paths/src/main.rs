@@ -31,6 +31,13 @@ struct CliOpts {
     )]
     algorithm: Option<HashAlgorithm>,
 
+    #[structopt(
+        short = "p",
+        long = "show-progression",
+        help = "Show progression information."
+    )]
+    progression: bool,
+
     #[structopt(short = "d", long = "debug", help = "Activates debug mode.")]
     debug: bool,
 
@@ -43,16 +50,9 @@ impl CliOpts {
         HashPathsConfig {
             source_file: PathBuf::from(&self.source_file),
             target_file: PathBuf::from(&self.target_file),
-            bytes: if let Some(bytes) = self.bytes {
-                bytes
-            } else {
-                0
-            },
-            algorithm: if let Some(algo) = self.algorithm {
-                algo
-            } else {
-                HashAlgorithm::Md5
-            },
+            bytes: self.bytes.unwrap_or(0),
+            algorithm: self.algorithm.unwrap_or(HashAlgorithm::Md5),
+            show_progression: self.progression,
             debug: if self.debug { Debug::On } else { Debug::Off },
             error_log: self.error_log.as_ref().map(|path| PathBuf::from(&path)),
         }
